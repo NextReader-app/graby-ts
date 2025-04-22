@@ -161,21 +161,28 @@ describe('HttpClient', () => {
 
     await client.fetch('https://example.com', {
       headers: {
-        'X-Custom-Header': 'Custom Value'
+        'cookie': 'session=abc123',
+        'accept': 'application/json',
+        'X-Custom-Header': 'Custom Value' // Should be ignored
       }
     });
     
-    // Verify fetch was called with custom headers
+    // Verify fetch was called with custom headers (only the supported ones)
     expect(fetch).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
         headers: expect.objectContaining({
           'User-Agent': 'Custom User Agent',
           'Referer': 'https://custom-referer.com',
-          'X-Custom-Header': 'Custom Value'
+          'Cookie': 'session=abc123',
+          'Accept': 'application/json'
         })
       })
     );
+    
+    // Verify unsupported headers were not included
+    const fetchCall = (fetch as jest.Mock).mock.calls[0][1];
+    expect(fetchCall.headers).not.toHaveProperty('X-Custom-Header');
   });
   
   test('handles redirects with silent option', async () => {
@@ -211,5 +218,52 @@ describe('HttpClient', () => {
     
     // Clean up spy
     consoleLogSpy.mockRestore();
+  });
+
+  test('handles site-specific HTTP headers', async () => {
+    // Mock fetch response
+    const mockResponse = {
+      url: 'https://example.com',
+      redirected: false,
+      status: 200,
+      headers: new Headers({
+        'content-type': 'text/html; charset=utf-8'
+      }),
+      text: jest.fn().mockResolvedValue('<html><body>Test content</body></html>')
+    };
+    
+    (fetch as jest.Mock).mockResolvedValue(mockResponse);
+
+    const client = new HttpClient({ silent: true });
+    
+    // Test with site-specific headers (only the supported ones)
+    await client.fetch('https://example.com', {
+      headers: {
+        'user-agent': 'Site Specific User Agent',
+        'referer': 'https://site-specific-referer.com',
+        'cookie': 'session=abc123',
+        'accept': 'application/json',
+        'X-API-Key': 'site-specific-api-key', // Should be ignored
+        'Authorization': 'Bearer token123'     // Should be ignored
+      }
+    });
+    
+    // Verify fetch was called with only the supported headers
+    expect(fetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'User-Agent': 'Site Specific User Agent',
+          'Referer': 'https://site-specific-referer.com',
+          'Cookie': 'session=abc123',
+          'Accept': 'application/json'
+        })
+      })
+    );
+    
+    // Verify unsupported headers were not included
+    const fetchCall = (fetch as jest.Mock).mock.calls[0][1];
+    expect(fetchCall.headers).not.toHaveProperty('X-API-Key');
+    expect(fetchCall.headers).not.toHaveProperty('Authorization');
   });
 });

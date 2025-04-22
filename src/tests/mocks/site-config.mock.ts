@@ -1,18 +1,38 @@
+// Default site config for tests
+export const defaultSiteConfig = {
+  title: ['.//title'],
+  body: ['.//div[@class="content"]'],
+  date: ['.//meta[@property="article:published_time"]/@content'],
+  author: ['.//span[@class="author"]'],
+  strip: ['.//div[@class="comments"]'],
+  next_page_link: ['.//a[@class="next-page"]'],
+  native_ad_clue: ['.//div[@class="sponsored"]', './/span[contains(text(), "Sponsored")]'],
+  find_string: ['oldText'],
+  replace_string: ['newText']
+};
+
+// Site config with HTTP headers for testing
+export const siteConfigWithHeaders = {
+  ...defaultSiteConfig,
+  http_header: {
+    'user-agent': 'Site Specific User Agent',
+    'referer': 'https://site-specific-referer.com',
+    'cookie': 'session=abc123',
+    'accept': 'application/json',
+    // These should be ignored by the HttpClient:
+    'X-API-Key': 'site-specific-key',
+    'Authorization': 'Bearer site-token'
+  }
+};
+
+// Variable to control which config to return
+export let currentSiteConfig = defaultSiteConfig;
+
 // Mock for graby-ts-site-config
 export class SiteConfigManager {
   async getConfigForHost(hostname: string) {
-    // Return a mock configuration for testing
-    return {
-      title: ['.//title'],
-      body: ['.//div[@class="content"]'],
-      date: ['.//meta[@property="article:published_time"]/@content'],
-      author: ['.//span[@class="author"]'],
-      strip: ['.//div[@class="comments"]'],
-      next_page_link: ['.//a[@class="next-page"]'],
-      native_ad_clue: ['.//div[@class="sponsored"]', './/span[contains(text(), "Sponsored")]'],
-      find_string: ['oldText'],
-      replace_string: ['newText']
-    };
+    // Return the current site config
+    return currentSiteConfig;
   }
 }
 

@@ -174,4 +174,52 @@ describe('Graby', () => {
     // Clean up spy
     consoleErrorSpy.mockRestore();
   });
+
+  test('properly passes site-specific HTTP headers', async () => {
+    // Import the module directly to modify the mock
+    const siteConfigMock = require('../mocks/site-config.mock');
+    
+    // Set the site config to use HTTP headers
+    siteConfigMock.currentSiteConfig = siteConfigMock.siteConfigWithHeaders;
+    
+    // Setup mock response
+    const mockResponse = {
+      url: 'https://example.com/article',
+      redirected: false,
+      status: 200,
+      headers: new Headers({
+        'content-type': 'text/html; charset=utf-8'
+      }),
+      text: jest.fn().mockResolvedValue(loadFixture('article.html'))
+    };
+    
+    (fetch as jest.Mock).mockResolvedValue(mockResponse);
+
+    // Create Graby instance
+    const graby = new Graby({ silent: true });
+    
+    // Extract content
+    await graby.extract('https://example.com/article');
+
+    // Verify that fetch was called with the site-specific headers (only the supported ones)
+    expect(fetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'User-Agent': 'Site Specific User Agent',
+          'Referer': 'https://site-specific-referer.com',
+          'Cookie': 'session=abc123',
+          'Accept': 'application/json'
+        })
+      })
+    );
+    
+    // Verify unsupported headers were not included
+    const fetchCall = (fetch as jest.Mock).mock.calls[0][1];
+    expect(fetchCall.headers).not.toHaveProperty('X-API-Key');
+    expect(fetchCall.headers).not.toHaveProperty('Authorization');
+    
+    // Reset the site config for other tests
+    siteConfigMock.currentSiteConfig = siteConfigMock.defaultSiteConfig;
+  });
 });
