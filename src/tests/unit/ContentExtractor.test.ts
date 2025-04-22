@@ -2,6 +2,7 @@ import ContentExtractor from '../../lib/ContentExtractor';
 import { MockSiteConfigManager } from '../mocks/siteconfig.mock';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { parseHTML } from 'linkedom';
 
 // Helper to load test fixtures
 const loadFixture = (name: string): string => {
@@ -161,5 +162,65 @@ describe('ContentExtractor', () => {
     // The test checks for things that don't make sense with how the mock is set up
     // Instead, let's verify that the content extractor ran successfully
     expect(extractor.getResult().success).toBe(true);
+  });
+
+  test('validates the accepted wrap_in tags', () => {
+    // Create a test instance
+    const testExtractor = new ContentExtractor({}, mockSiteConfigManager);
+    
+    // Check that the acceptedWrapInTags property contains the expected tags
+    const acceptedTags = (testExtractor as any).acceptedWrapInTags;
+    expect(acceptedTags).toContain('blockquote');
+    expect(acceptedTags).toContain('p');
+    expect(acceptedTags).toContain('div');
+    expect(acceptedTags.length).toBe(3); // Only these 3 tags should be allowed
+  });
+
+  test('has limited set of accepted wrap_in tags for security', () => {
+    // Direct test of the acceptedWrapInTags property
+    const testExtractor = new ContentExtractor({}, mockSiteConfigManager);
+    
+    // Access the private property using type assertion
+    const acceptedTags = (testExtractor as any).acceptedWrapInTags;
+    
+    // Verify it contains only the expected safe tags
+    expect(acceptedTags).toEqual(['blockquote', 'p', 'div']);
+    
+    // Verify it doesn't contain unsafe tags
+    expect(acceptedTags).not.toContain('script');
+    expect(acceptedTags).not.toContain('iframe');
+    expect(acceptedTags).not.toContain('object');
+  });
+  
+  test('logs warning for disallowed wrap_in tags', () => {
+    // Create a direct instance for testing
+    const testExtractor = new ContentExtractor({}, mockSiteConfigManager);
+    
+    // Mock console.warn
+    const originalWarn = console.warn;
+    const mockWarn = jest.fn();
+    console.warn = mockWarn;
+    
+    // Create a mock site config with a disallowed tag
+    const mockConfig = {
+      wrap_in: {
+        'script': '//div' // script is not allowed
+      }
+    };
+    
+    // Directly call the method that should trigger the warning
+    // Create a mock document
+    const { document } = parseHTML('<html><body></body></html>');
+    
+    // Call the method that processes wrap_in directives
+    (testExtractor as any).applySiteConfig(mockConfig, document);
+    
+    // Verify the warning was logged
+    expect(mockWarn).toHaveBeenCalledWith(
+      expect.stringContaining('Tag "script" is not allowed for wrap_in')
+    );
+    
+    // Restore console.warn
+    console.warn = originalWarn;
   });
 });
