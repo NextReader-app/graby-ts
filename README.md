@@ -1,0 +1,63 @@
+# Grabby-JS
+
+A JavaScript implementation of [Graby](https://github.com/j0k3r/graby), the content extraction library.
+
+## Overview
+
+Grabby-JS extracts content from web pages using site-specific configurations from [FiveFilters ftr-site-config](https://github.com/fivefilters/ftr-site-config) and the Mozilla Readability algorithm. This library is designed to be platform-agnostic, working in browsers, Node.js, and NativeScript environments.
+
+## Installation
+
+```bash
+npm install grabby-js
+```
+
+## Usage
+
+```javascript
+import { Grabby } from 'grabby-js';
+
+// Create a Grabby instance
+const grabby = new Grabby();
+
+// Extract content from a URL
+const result = await grabby.extract('https://example.com/article');
+
+console.log(result.title);       // Article title
+console.log(result.html);        // Article HTML content
+console.log(result.authors);     // Article authors
+console.log(result.date);        // Publication date
+console.log(result.image);       // Featured image URL
+```
+
+## Features Comparison with PHP Graby
+
+### ✅ Implemented
+- Basic content extraction using site configs
+- Readability algorithm as fallback
+- HTML cleanup and post-processing
+- HTTP client with proper handling of redirects
+- Support for metadata extraction (OpenGraph, JSON-LD)
+- Lazy image loading detection and fixing
+- XSS protection
+
+### 🚧 Coming Soon
+- Multipage article support (currently only detects next page)
+- Advanced site configuration features
+- PDF and non-HTML content processing
+- Advanced logging system
+
+## Platform Support
+- ✅ Node.js
+- ✅ Browsers (with bundling)
+- 🚧 NativeScript (in progress)
+
+## Credits
+- Based on [Graby](https://github.com/j0k3r/graby) by j0k3r
+- Uses [Mozilla Readability](https://github.com/mozilla/readability)
+- Uses site configurations from [FiveFilters ftr-site-config](https://github.com/fivefilters/ftr-site-config)
+- Uses [Grabby-JS Site Config](https://github.com/NextReader-app/grabby-js-site-config)
+
+## License
+
+MIT
