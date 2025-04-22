@@ -42,9 +42,9 @@ console.log(result.image);       // Featured image URL
 - XSS protection
 - Multipage article support
 - Site-specific HTTP headers
+- `wrap_in` functionality to enclose content in specific tags
 
 ### 🚧 Coming Soon
-- `wrap_in` functionality to enclose content in specific tags
 - PDF and non-HTML content processing
 
 ### Not planned

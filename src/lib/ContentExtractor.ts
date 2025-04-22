@@ -1,6 +1,6 @@
 import { parseHTML } from 'linkedom';
 import { Readability } from '@mozilla/readability';
-import { evaluateXPathToNodes } from 'fontoxpath';
+import { evaluateXPathToNodes, Node as FontoxpathNode } from 'fontoxpath';
 import URLParse from 'url-parse';
 import { format, parseISO } from 'date-fns';
 import DOMPurify from 'dompurify';
@@ -31,6 +31,9 @@ class ContentExtractor {
   private nextPageUrl: string | null = null;
   private singlePageUrl: string | null = null; // Added for single-page support
   private success: boolean = false;
+
+  // List of accepted tags for wrap_in (for semantic HTML reasons)
+  private acceptedWrapInTags: string[] = ['blockquote', 'p', 'div'];
 
   /**
    * Create a new ContentExtractor
@@ -331,9 +334,9 @@ class ContentExtractor {
     for (const pattern of siteConfig.single_page_link) {
       try {
         // Check if there's a condition for this pattern
-        if (siteConfig.if_page_contains && 
-            !Array.isArray(siteConfig.if_page_contains) && 
-            siteConfig.if_page_contains.single_page_link && 
+        if (siteConfig.if_page_contains &&
+            !Array.isArray(siteConfig.if_page_contains) &&
+            siteConfig.if_page_contains.single_page_link &&
             siteConfig.if_page_contains.single_page_link[pattern]) {
 
           const condition = siteConfig.if_page_contains.single_page_link[pattern];
@@ -388,9 +391,9 @@ class ContentExtractor {
     for (const pattern of siteConfig.next_page_link) {
       try {
         // Check if there's a condition for this pattern
-        if (siteConfig.if_page_contains && 
-            !Array.isArray(siteConfig.if_page_contains) && 
-            siteConfig.if_page_contains.next_page_link && 
+        if (siteConfig.if_page_contains &&
+            !Array.isArray(siteConfig.if_page_contains) &&
+            siteConfig.if_page_contains.next_page_link &&
             siteConfig.if_page_contains.next_page_link[pattern]) {
 
           const condition = siteConfig.if_page_contains.next_page_link[pattern];
@@ -428,6 +431,32 @@ class ContentExtractor {
         }
       } catch (e) {
         console.error('Error evaluating next page XPath:', e);
+      }
+    }
+  }
+
+  /**
+   * Wrap elements with the provided tag
+   * @param elements - Elements to wrap
+   * @param tag - HTML tag to wrap elements with
+   * @param logMessage - Optional log message
+   */
+  private wrapElements(elements: FontoxpathNode[], tag: string, logMessage?: string): void {
+    if (!elements || elements.length === 0) {
+      return;
+    }
+
+    if (logMessage) {
+      console.log(logMessage, { length: elements.length });
+    }
+
+    for (const item of elements) {
+      if (item instanceof Element && item.parentNode) {
+        const document = item.ownerDocument;
+        const newNode = document.createElement(tag);
+        newNode.innerHTML = item.outerHTML;
+
+        item.parentNode.replaceChild(newNode, item);
       }
     }
   }
@@ -491,6 +520,26 @@ class ContentExtractor {
           }
         } catch (e) {
           console.error('Error evaluating body XPath:', e);
+        }
+      }
+    }
+
+    // Handle wrap_in rules - wrap elements with specified tags
+    if (siteConfig.wrap_in) {
+      for (const [tag, pattern] of Object.entries(siteConfig.wrap_in)) {
+        // Only allow specific tags for semantic HTML reasons
+        if (!this.acceptedWrapInTags.includes(tag)) {
+          console.warn(`Tag "${tag}" is not allowed for wrap_in. Only blockquote, p, and div are supported for semantic HTML reasons.`);
+          continue;
+        }
+
+        try {
+          const elems = evaluateXPathToNodes(pattern, document, null, null);
+          if (elems.length > 0) {
+            this.wrapElements(Array.from(elems), tag, `Wrapping ${elems.length} elements with ${tag}`);
+          }
+        } catch (e) {
+          console.error('Error evaluating wrap_in XPath:', e);
         }
       }
     }
