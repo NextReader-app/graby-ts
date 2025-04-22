@@ -1,8 +1,8 @@
-import { SiteConfig } from '../../lib/interfaces';
+import type { SiteConfig as ExternalSiteConfig } from 'graby-ts-site-config/dist/types';
 
 // Mock site configuration manager
 export class MockSiteConfigManager {
-  private configs: Record<string, SiteConfig> = {
+  private configs: Record<string, ExternalSiteConfig> = {
     'example.com': {
       title: ['//h1[@class="title"]'],
       body: ['//div[@class="content"]'],
@@ -18,7 +18,7 @@ export class MockSiteConfigManager {
     }
   };
 
-  async getConfigForHost(hostname: string): Promise<SiteConfig | null> {
+  async getConfigForHost(hostname: string): Promise<ExternalSiteConfig | null> {
     return this.configs[hostname] || null;
   }
 }

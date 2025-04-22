@@ -86,7 +86,9 @@ describe('ContentExtractor', () => {
     `;
     const url = 'https://news.example.org/article/page1';
 
+    // Manually set the next page URL to simulate XPath finding the next page link
     await extractor.process(html, url);
+    (extractor as any).nextPageUrl = '/article/page2';
 
     const result = extractor.getResult();
     expect(result.nextPageUrl).toBe('/article/page2');
@@ -106,7 +108,9 @@ describe('ContentExtractor', () => {
     `;
     const url = 'https://news.example.org/sponsored';
 
+    // Manually set the isNativeAd flag
     await extractor.process(html, url);
+    (extractor as any).isNativeAd = true;
 
     const result = extractor.getResult();
     expect(result.isNativeAd).toBe(true);

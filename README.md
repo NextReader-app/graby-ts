@@ -40,10 +40,11 @@ console.log(result.image);       // Featured image URL
 - Support for metadata extraction (OpenGraph, JSON-LD)
 - Lazy image loading detection and fixing
 - XSS protection
+- Multipage article support
 
 ### 🚧 Coming Soon
-- Multipage article support (currently only detects next page)
-- Advanced site configuration features
+- `wrap_in` functionality to enclose content in specific tags
+- Site-specific HTTP headers
 - PDF and non-HTML content processing
 - Advanced logging system
 

@@ -7,9 +7,11 @@ import DOMPurify from 'dompurify';
 import { ContentExtractorOptions, ExtractionResult, SiteConfig } from './interfaces';
 import DomUtils from './DomUtils';
 
+import type { SiteConfig as ExternalSiteConfig } from 'graby-ts-site-config/dist/types';
+
 // Type definition for SiteConfigManager
 interface SiteConfigManager {
-  getConfigForHost(hostname: string): Promise<SiteConfig | null>;
+  getConfigForHost(hostname: string): Promise<ExternalSiteConfig | null>;
 }
 
 /**
@@ -27,6 +29,7 @@ class ContentExtractor {
   private image: string | null = null;
   private isNativeAd: boolean = false;
   private nextPageUrl: string | null = null;
+  private singlePageUrl: string | null = null; // Added for single-page support
   private success: boolean = false;
 
   /**
@@ -55,6 +58,7 @@ class ContentExtractor {
     this.image = null;
     this.isNativeAd = false;
     this.nextPageUrl = null;
+    this.singlePageUrl = null; // Reset single page URL
     this.success = false;
   }
 
@@ -62,16 +66,19 @@ class ContentExtractor {
    * Process HTML content and extract article
    * @param html - HTML content
    * @param url - URL of the page
+   * @param siteConfig - Optional site configuration (to avoid fetching it again)
    * @returns - Success status
    */
-  async process(html: string, url: string): Promise<boolean> {
+  async process(html: string, url: string, siteConfig?: SiteConfig): Promise<boolean> {
     this.reset();
 
     // Parse URL
     const parsedUrl = new URLParse(url);
 
-    // Get site config
-    const siteConfig = await this.siteConfigManager.getConfigForHost(parsedUrl.hostname);
+    // Get site config if not provided
+    if (!siteConfig) {
+      siteConfig = await this.siteConfigManager.getConfigForHost(parsedUrl.hostname) || undefined;
+    }
 
     // Apply string replacements from site config if available
     if (siteConfig && siteConfig.find_string && siteConfig.replace_string) {
@@ -88,8 +95,12 @@ class ContentExtractor {
     // Extract metadata (OpenGraph, JSON-LD, etc.)
     this.extractMetadata(document);
 
-    // Apply site-specific extraction rules
+    // Extract links to single page and next page
     if (siteConfig) {
+      this.extractSinglePageUrl(document, siteConfig);
+      this.extractNextPageUrl(document, siteConfig);
+
+      // Apply site-specific extraction rules
       this.applySiteConfig(siteConfig, document);
     }
 
@@ -105,6 +116,22 @@ class ContentExtractor {
     }
 
     return this.success;
+  }
+
+  /**
+   * Get the URL to the next page, if found
+   * @returns - Next page URL or null
+   */
+  public getNextPageUrl(): string | null {
+    return this.nextPageUrl;
+  }
+
+  /**
+   * Get the URL to the single page view, if found
+   * @returns - Single page URL or null
+   */
+  public getSinglePageUrl(): string | null {
+    return this.singlePageUrl;
   }
 
   /**
@@ -136,10 +163,10 @@ class ContentExtractor {
    */
   private extractMetadata(document: Document): void {
     // Extract metadata in priority order:
-    
+
     // First get basic metadata (title from title tag, language, etc)
     this.extractBasicMetadata(document);
-    
+
     // Then OpenGraph metadata (which may override basic metadata)
     this.extractOpenGraph(document);
 
@@ -247,7 +274,7 @@ class ContentExtractor {
         if (!this.content) {
           const { document: contentDoc } = parseHTML(`<div>${article.content}</div>`);
           this.content = contentDoc.querySelector('div');
-          
+
           // Set success to true when content is created through Readability
           if (this.content) {
             this.success = true;
@@ -292,6 +319,120 @@ class ContentExtractor {
   }
 
   /**
+   * Extract single page URL from document using site config rules
+   * @param document - DOM document
+   * @param siteConfig - Site configuration
+   */
+  private extractSinglePageUrl(document: Document, siteConfig: SiteConfig): void {
+    if (!siteConfig.single_page_link || siteConfig.single_page_link.length === 0) {
+      return;
+    }
+
+    for (const pattern of siteConfig.single_page_link) {
+      try {
+        // Check if there's a condition for this pattern
+        if (siteConfig.if_page_contains && 
+            !Array.isArray(siteConfig.if_page_contains) && 
+            siteConfig.if_page_contains.single_page_link && 
+            siteConfig.if_page_contains.single_page_link[pattern]) {
+
+          const condition = siteConfig.if_page_contains.single_page_link[pattern];
+          const conditionNodes = evaluateXPathToNodes(condition, document, null, null);
+
+          // Skip this pattern if condition isn't met
+          if (!conditionNodes || conditionNodes.length === 0) {
+            continue;
+          }
+        }
+
+        // Try to evaluate the XPath expression
+        const result = evaluateXPathToNodes(pattern, document, null, null);
+
+        if (typeof result === 'string') {
+          this.singlePageUrl = String(result).trim();
+          break;
+        } else if (result && result.length > 0) {
+          for (const node of result) {
+            if (node instanceof Element && node.hasAttribute('href')) {
+              this.singlePageUrl = node.getAttribute('href');
+              break;
+            } else if (node instanceof Attr && node.value) {
+              this.singlePageUrl = node.value;
+              break;
+            } else if (node && (node as any).textContent) {
+              this.singlePageUrl = (node as any).textContent.trim();
+              break;
+            }
+          }
+
+          if (this.singlePageUrl) {
+            break;
+          }
+        }
+      } catch (e) {
+        console.error('Error evaluating single page XPath:', e);
+      }
+    }
+  }
+
+  /**
+   * Extract next page URL from document using site config rules
+   * @param document - DOM document
+   * @param siteConfig - Site configuration
+   */
+  private extractNextPageUrl(document: Document, siteConfig: SiteConfig): void {
+    if (!siteConfig.next_page_link || siteConfig.next_page_link.length === 0) {
+      return;
+    }
+
+    for (const pattern of siteConfig.next_page_link) {
+      try {
+        // Check if there's a condition for this pattern
+        if (siteConfig.if_page_contains && 
+            !Array.isArray(siteConfig.if_page_contains) && 
+            siteConfig.if_page_contains.next_page_link && 
+            siteConfig.if_page_contains.next_page_link[pattern]) {
+
+          const condition = siteConfig.if_page_contains.next_page_link[pattern];
+          const conditionNodes = evaluateXPathToNodes(condition, document, null, null);
+
+          // Skip this pattern if condition isn't met
+          if (!conditionNodes || conditionNodes.length === 0) {
+            continue;
+          }
+        }
+
+        // Try to evaluate the XPath expression
+        const result = evaluateXPathToNodes(pattern, document, null, null);
+
+        if (typeof result === 'string') {
+          this.nextPageUrl = String(result).trim();
+          break;
+        } else if (result && result.length > 0) {
+          for (const node of result) {
+            if (node instanceof Element && node.hasAttribute('href')) {
+              this.nextPageUrl = node.getAttribute('href');
+              break;
+            } else if (node instanceof Attr && node.value) {
+              this.nextPageUrl = node.value;
+              break;
+            } else if (node && (node as any).textContent) {
+              this.nextPageUrl = (node as any).textContent.trim();
+              break;
+            }
+          }
+
+          if (this.nextPageUrl) {
+            break;
+          }
+        }
+      } catch (e) {
+        console.error('Error evaluating next page XPath:', e);
+      }
+    }
+  }
+
+  /**
    * Apply site-specific config rules
    * @param siteConfig - Site configuration
    * @param document - DOM document
@@ -315,7 +456,7 @@ class ContentExtractor {
         }
       }
     }
-    
+
     // Check for native ads
     if (siteConfig.native_ad_clue && siteConfig.native_ad_clue.length > 0) {
       for (const clueXPath of siteConfig.native_ad_clue) {
@@ -367,32 +508,6 @@ class ContentExtractor {
           });
         } catch (e) {
           console.error('Error evaluating strip XPath:', e);
-        }
-      }
-    }
-
-    // Extract next page URL if available
-    if (siteConfig.next_page_link && siteConfig.next_page_link.length > 0) {
-      for (const nextPageXPath of siteConfig.next_page_link) {
-        try {
-          const nextPageNodes = evaluateXPathToNodes(nextPageXPath, document, null, null);
-          if (nextPageNodes.length > 0) {
-            const nextPageNode = nextPageNodes[0] as Node;
-            if (nextPageNode.nodeType === 1) { // Element node
-              const element = nextPageNode as Element;
-              if (element.hasAttribute('href')) {
-                this.nextPageUrl = element.getAttribute('href');
-              }
-            } else if (nextPageNode.nodeType === 2) { // Attribute node
-              const attrNode = nextPageNode as Attr;
-              this.nextPageUrl = attrNode.nodeValue;
-            } else {
-              this.nextPageUrl = nextPageNode.textContent || null;
-            }
-            break;
-          }
-        } catch (e) {
-          console.error('Error evaluating next page XPath:', e);
         }
       }
     }

@@ -68,7 +68,22 @@ export interface SiteConfig {
   next_page_link?: string[];
   single_page_link?: string[];
   native_ad_clue?: string[];
-  // Other site config properties...
+
+  // Add support for conditional expressions
+  if_page_contains?: {
+    next_page_link?: Record<string, string>;
+    single_page_link?: Record<string, string>;
+  } | string[];
+
+  // Other site config properties
+  tidy?: boolean;
+  prune?: boolean;
+  autodetect_on_failure?: boolean;
+  parser?: string;
+  http_header?: Record<string, string>;
+  wrap_in?: Record<string, string>;
+  src_lazy_load_attr?: string | string[];
+  skip_json_ld?: boolean;
 }
 
 /**
@@ -79,4 +94,6 @@ export interface GrabyOptions {
   extractor?: ContentExtractorOptions;
   siteConfig?: Record<string, any>;
   silent?: boolean;
+  multipage?: boolean; // Control for multi-page support
+  multipageLimit?: number; // Maximum number of pages to process
 }
