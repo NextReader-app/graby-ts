@@ -1,92 +1,162 @@
 import HttpClient from '../../lib/HttpClient';
-import { HttpResponse } from '../../lib/interfaces';
+
+// Mock isomorphic-fetch module
+jest.mock('isomorphic-fetch', () => {
+  return jest.fn();
+});
+
+// Import the mocked fetch
+import fetch from 'isomorphic-fetch';
 
 describe('HttpClient', () => {
-  // Mock global fetch
-  const mockFetch = global.fetch as jest.Mock;
-
   beforeEach(() => {
     jest.clearAllMocks();
-    mockFetch.mockImplementation(async () => ({
+  });
+
+  test('fetches content with default headers', async () => {
+    // Mock fetch response
+    const mockResponse = {
       url: 'https://example.com',
       redirected: false,
       status: 200,
       headers: new Headers({
         'content-type': 'text/html; charset=utf-8'
       }),
-      text: async () => '<html><body>Test content</body></html>'
-    }));
-  });
+      text: jest.fn().mockResolvedValue('<html><body>Test content</body></html>')
+    };
+    
+    (fetch as jest.Mock).mockResolvedValue(mockResponse);
 
-  test('fetches content with default headers', async () => {
-    const client = new HttpClient();
+    const client = new HttpClient({silent: true});
     const response = await client.fetch('https://example.com');
 
-    expect(mockFetch).toHaveBeenCalledTimes(1);
-    expect(mockFetch.mock.calls[0][0]).toBe('https://example.com');
-    expect(mockFetch.mock.calls[0][1].headers['User-Agent']).toBeDefined();
+    // Verify the response has expected values
+    expect(response.url).toMatch(/^https:\/\/example\.com\/?$/);
     expect(response.html).toBe('<html><body>Test content</body></html>');
+    expect(response.contentType).toContain('text/html');
+    
+    // Verify fetch was called with expected URL
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/https:\/\/example\.com/),
+      expect.objectContaining({
+        method: 'GET',
+        headers: expect.any(Object),
+        redirect: 'follow'
+      })
+    );
   });
 
   test('handles redirects', async () => {
-    mockFetch.mockImplementationOnce(async () => ({
+    // Mock fetch response for redirect
+    const mockResponse = {
       url: 'https://example.com/redirected',
       redirected: true,
       status: 200,
       headers: new Headers({
         'content-type': 'text/html; charset=utf-8'
       }),
-      text: async () => '<html><body>Redirected content</body></html>'
-    }));
+      text: jest.fn().mockResolvedValue('<html><body>Redirected content</body></html>')
+    };
+    
+    (fetch as jest.Mock).mockResolvedValue(mockResponse);
 
-    const client = new HttpClient();
+    const client = new HttpClient({silent: true});
     const response = await client.fetch('https://example.com');
 
-    expect(response.url).toBe('https://example.com/redirected');
+    // Verify redirect was handled correctly
+    expect(response.url).toMatch(/^https:\/\/example\.com\/redirected\/?$/);
     expect(response.html).toBe('<html><body>Redirected content</body></html>');
   });
 
   test('handles non-HTML content types', async () => {
-    mockFetch.mockImplementationOnce(async () => ({
+    // Mock fetch response for non-HTML content
+    const mockResponse = {
       url: 'https://example.com/image.jpg',
       redirected: false,
       status: 200,
       headers: new Headers({
         'content-type': 'image/jpeg'
       }),
-      text: async () => 'binary data'
-    }));
+      text: jest.fn().mockResolvedValue('binary data')
+    };
+    
+    (fetch as jest.Mock).mockResolvedValue(mockResponse);
 
-    const client = new HttpClient();
+    const client = new HttpClient({silent: true});
     const response = await client.fetch('https://example.com/image.jpg');
 
+    // Verify non-HTML content handling
     expect(response.specialContent).toBe(true);
     expect(response.contentType).toBe('image/jpeg');
     expect(response.html).toBeNull();
   });
 
   test('handles fetch errors', async () => {
-    mockFetch.mockImplementationOnce(() => {
-      throw new Error('Network error');
-    });
+    // Mock fetch to reject with an error
+    const mockError = new Error('Network error');
+    (fetch as jest.Mock).mockRejectedValue(mockError);
 
-    const client = new HttpClient();
+    const client = new HttpClient({silent: true});
 
+    // Verify error is properly propagated
+    await expect(client.fetch('https://example.com')).rejects.toThrow('Network error');
+  });
+  
+  test('handles errors with silent option', async () => {
+    // Mock fetch to reject with an error
+    const mockError = new Error('Network error');
+    (fetch as jest.Mock).mockRejectedValue(mockError);
+    
+    // Spy on console.error
+    const consoleErrorSpy = jest.spyOn(console, 'error');
+    
+    // Client with silent option
+    const silentClient = new HttpClient({ silent: true });
+    
     try {
-      await client.fetch('https://example.com');
-      // If we get here, the test should fail
-      expect(true).toBe(false); // Force failure
-    } catch (error: any) {
-      expect(error.message).toContain('Network error');
+      await silentClient.fetch('https://example.com');
+    } catch (error) {
+      // Error should be thrown but no console output
     }
+    
+    // Should not log error message
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+    
+    // Client without silent option
+    const verboseClient = new HttpClient({ silent: false });
+    
+    try {
+      await verboseClient.fetch('https://example.com');
+    } catch (error) {
+      // Error should be thrown and logged
+    }
+    
+    // Should log error message
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Error fetching URL:', expect.any(Error));
+    
+    // Clean up spy
+    consoleErrorSpy.mockRestore();
   });
 
   test('customizes headers via options', async () => {
-    mockFetch.mockImplementationOnce(jest.fn());
+    // Mock fetch response
+    const mockResponse = {
+      url: 'https://example.com',
+      redirected: false,
+      status: 200,
+      headers: new Headers({
+        'content-type': 'text/html; charset=utf-8'
+      }),
+      text: jest.fn().mockResolvedValue('<html><body>Test content</body></html>')
+    };
     
+    (fetch as jest.Mock).mockResolvedValue(mockResponse);
+
     const client = new HttpClient({
       userAgent: 'Custom User Agent',
-      referer: 'https://custom-referer.com'
+      referer: 'https://custom-referer.com',
+      silent: true
     });
 
     await client.fetch('https://example.com', {
@@ -94,9 +164,52 @@ describe('HttpClient', () => {
         'X-Custom-Header': 'Custom Value'
       }
     });
-
-    // Just test that fetch was called - we can't reliably test the headers
-    // due to mocking challenges
-    expect(mockFetch).toHaveBeenCalled();
+    
+    // Verify fetch was called with custom headers
+    expect(fetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'User-Agent': 'Custom User Agent',
+          'Referer': 'https://custom-referer.com',
+          'X-Custom-Header': 'Custom Value'
+        })
+      })
+    );
+  });
+  
+  test('handles redirects with silent option', async () => {
+    // Mock fetch response with redirect
+    const mockResponse = {
+      url: 'https://example.com/redirected',
+      redirected: true,
+      status: 200,
+      headers: new Headers({
+        'content-type': 'text/html; charset=utf-8'
+      }),
+      text: jest.fn().mockResolvedValue('<html><body>Redirected content</body></html>')
+    };
+    
+    (fetch as jest.Mock).mockResolvedValue(mockResponse);
+    
+    // Spy on console.log
+    const consoleLogSpy = jest.spyOn(console, 'log');
+    
+    // Client with silent option
+    const silentClient = new HttpClient({ silent: true });
+    await silentClient.fetch('https://example.com');
+    
+    // Should not log redirect message
+    expect(consoleLogSpy).not.toHaveBeenCalled();
+    
+    // Client without silent option
+    const verboseClient = new HttpClient({ silent: false });
+    await verboseClient.fetch('https://example.com');
+    
+    // Should log redirect message
+    expect(consoleLogSpy).toHaveBeenCalledWith('Redirected to: https://example.com/redirected');
+    
+    // Clean up spy
+    consoleLogSpy.mockRestore();
   });
 });

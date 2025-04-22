@@ -1,5 +1,5 @@
 {
-  "name": "grabby-js",
+  "name": "graby-ts",
   "version": "0.1.0",
   "description": "TypeScript version of Graby content extraction library",
   "main": "dist/index.js",
@@ -27,7 +27,7 @@
     "date-fns": "^2.29.3",
     "dompurify": "^3.0.5",
     "fontoxpath": "^3.28.2",
-    "grabby-js-site-config": "^1.0.1",
+    "graby-ts-site-config": "^1.0.2",
     "html-entities": "^2.4.0",
     "isomorphic-fetch": "^3.0.0",
     "linkedom": "^0.15.1",

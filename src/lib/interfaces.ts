@@ -17,6 +17,7 @@ export interface HttpClientOptions {
   userAgent?: string;
   referer?: string;
   maxRedirects?: number;
+  silent?: boolean;
 }
 
 /**
@@ -71,10 +72,11 @@ export interface SiteConfig {
 }
 
 /**
- * Grabby options
+ * Graby options
  */
-export interface GrabbyOptions {
+export interface GrabyOptions {
   httpClient?: HttpClientOptions;
   extractor?: ContentExtractorOptions;
   siteConfig?: Record<string, any>;
+  silent?: boolean;
 }

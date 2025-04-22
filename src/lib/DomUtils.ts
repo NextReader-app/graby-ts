@@ -100,7 +100,10 @@ class DomUtils {
           }
 
           // Remove the data attribute
-          img.removeAttribute(attr);
+          // Make sure removeAttribute is a function before calling it
+          if (typeof img.removeAttribute === 'function') {
+            img.removeAttribute(attr);
+          }
         }
       });
 

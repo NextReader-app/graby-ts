@@ -4,7 +4,6 @@ import { evaluateXPathToNodes } from 'fontoxpath';
 import URLParse from 'url-parse';
 import { format, parseISO } from 'date-fns';
 import DOMPurify from 'dompurify';
-import { decode } from 'html-entities';
 import { ContentExtractorOptions, ExtractionResult, SiteConfig } from './interfaces';
 import DomUtils from './DomUtils';
 
@@ -136,14 +135,16 @@ class ContentExtractor {
    * @param document - DOM document
    */
   private extractMetadata(document: Document): void {
-    // Extract OpenGraph metadata
+    // Extract metadata in priority order:
+    
+    // First get basic metadata (title from title tag, language, etc)
+    this.extractBasicMetadata(document);
+    
+    // Then OpenGraph metadata (which may override basic metadata)
     this.extractOpenGraph(document);
 
-    // Extract JSON-LD metadata
+    // Finally JSON-LD metadata (highest priority)
     this.extractJsonLd(document);
-
-    // Extract basic metadata (title, language, etc.)
-    this.extractBasicMetadata(document);
   }
 
   /**
@@ -155,7 +156,10 @@ class ContentExtractor {
     const ogTitle = document.querySelector('meta[property="og:title"]');
     const ogImage = document.querySelector('meta[property="og:image"]');
 
-    if (ogTitle) this.title = ogTitle.getAttribute('content');
+    // OpenGraph should override basic metadata
+    if (ogTitle && ogTitle.getAttribute('content')) {
+      this.title = ogTitle.getAttribute('content');
+    }
     if (ogImage) this.image = ogImage.getAttribute('content');
 
     // Extract article metadata
@@ -193,11 +197,13 @@ class ContentExtractor {
 
         // Extract article data
         if (data['@type'] === 'Article' || data['@type'] === 'NewsArticle') {
-          if (!this.title && data.headline) {
+          // JSON-LD should override other metadata sources
+          if (data.headline) {
             this.title = data.headline;
           }
 
-          if (!this.date && data.datePublished) {
+          // JSON-LD date should override other sources too
+          if (data.datePublished) {
             this.date = data.datePublished;
           }
 
@@ -241,6 +247,11 @@ class ContentExtractor {
         if (!this.content) {
           const { document: contentDoc } = parseHTML(`<div>${article.content}</div>`);
           this.content = contentDoc.querySelector('div');
+          
+          // Set success to true when content is created through Readability
+          if (this.content) {
+            this.success = true;
+          }
         }
 
         // Use article metadata
@@ -301,6 +312,21 @@ class ContentExtractor {
           }
         } catch (e) {
           console.error('Error evaluating title XPath:', e);
+        }
+      }
+    }
+    
+    // Check for native ads
+    if (siteConfig.native_ad_clue && siteConfig.native_ad_clue.length > 0) {
+      for (const clueXPath of siteConfig.native_ad_clue) {
+        try {
+          const clueNodes = evaluateXPathToNodes(clueXPath, document, null, null);
+          if (clueNodes.length > 0) {
+            this.isNativeAd = true;
+            break;
+          }
+        } catch (e) {
+          console.error('Error evaluating native ad clue XPath:', e);
         }
       }
     }

@@ -1,27 +1,27 @@
-# Grabby-JS
+# Graby-TS
 
 A JavaScript implementation of [Graby](https://github.com/j0k3r/graby), the content extraction library.
 
 ## Overview
 
-Grabby-JS extracts content from web pages using site-specific configurations from [FiveFilters ftr-site-config](https://github.com/fivefilters/ftr-site-config) and the Mozilla Readability algorithm. This library is designed to be platform-agnostic, working in browsers, Node.js, and NativeScript environments.
+Graby-TS extracts content from web pages using site-specific configurations from [FiveFilters ftr-site-config](https://github.com/fivefilters/ftr-site-config) and the Mozilla Readability algorithm. This library is designed to be platform-agnostic, working in browsers, Node.js, and NativeScript environments.
 
 ## Installation
 
 ```bash
-npm install grabby-js
+npm install graby-ts
 ```
 
 ## Usage
 
 ```javascript
-import { Grabby } from 'grabby-js';
+import { Graby } from 'graby-ts';
 
-// Create a Grabby instance
-const grabby = new Grabby();
+// Create a Graby instance
+const graby = new Graby();
 
 // Extract content from a URL
-const result = await grabby.extract('https://example.com/article');
+const result = await graby.extract('https://example.com/article');
 
 console.log(result.title);       // Article title
 console.log(result.html);        // Article HTML content
@@ -56,7 +56,7 @@ console.log(result.image);       // Featured image URL
 - Based on [Graby](https://github.com/j0k3r/graby) by j0k3r
 - Uses [Mozilla Readability](https://github.com/mozilla/readability)
 - Uses site configurations from [FiveFilters ftr-site-config](https://github.com/fivefilters/ftr-site-config)
-- Uses [Grabby-JS Site Config](https://github.com/NextReader-app/grabby-js-site-config)
+- Uses [Graby-TS Site Config](https://github.com/NextReader-app/graby-ts-site-config)
 
 ## License
 

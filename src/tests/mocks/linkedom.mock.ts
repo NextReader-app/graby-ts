@@ -56,6 +56,9 @@ export const parseHTML = (html: string) => {
       if (selector === 'meta[property="article:published_time"]') {
         return { getAttribute: jest.fn().mockReturnValue('2023-08-15T14:30:00Z') };
       }
+      if (selector === 'meta[property="og:locale"]') {
+        return { getAttribute: jest.fn().mockReturnValue('en_US') };
+      }
       if (selector === 'div') {
         return mockElement;
       }
@@ -65,18 +68,27 @@ export const parseHTML = (html: string) => {
       if (selector === 'script[type="application/ld+json"]') {
         return [{
           textContent: JSON.stringify({
-            '@type': 'Article',
-            headline: 'JSON-LD Title',
-            datePublished: '2023-08-16T10:30:00Z',
-            author: { name: 'John Smith' }
+            '@type': 'NewsArticle',
+            headline: 'JSON-LD Headline',
+            datePublished: '2023-08-15T10:30:00Z',
+            author: { name: 'Jane Doe' }
           })
+        }];
+      }
+      if (selector === '.native-advertisement') {
+        return [{ textContent: 'Sponsored Content' }];
+      }
+      if (selector === 'a.next-page') {
+        return [{ 
+          getAttribute: jest.fn().mockReturnValue('/article/page2'),
+          hasAttribute: jest.fn().mockReturnValue(true)
         }];
       }
       return [];
     }),
     createElement: jest.fn().mockImplementation((tag) => ({
       tagName: tag.toUpperCase(),
-      innerHTML: '',
+      innerHTML: tag === 'div' ? '<p>This is the first paragraph of the article.</p>' : '',
       setAttribute: jest.fn(),
       getAttribute: jest.fn(),
       appendChild: jest.fn(),

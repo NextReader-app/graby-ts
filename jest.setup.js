@@ -3,6 +3,22 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
+// Silence console output during test runs unless specifically testing console behavior
+const originalConsoleLog = console.log;
+const originalConsoleError = console.error;
+
+beforeAll(() => {
+  // Mute console output during tests
+  console.log = jest.fn();
+  console.error = jest.fn();
+});
+
+afterAll(() => {
+  // Restore console
+  console.log = originalConsoleLog;
+  console.error = originalConsoleError;
+});
+
 // Set up fetch mock
 global.fetch = jest.fn().mockImplementation(() => 
   Promise.resolve({

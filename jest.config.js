@@ -8,14 +8,15 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   moduleNameMapper: {
     '^linkedom$': '<rootDir>/src/tests/mocks/linkedom.mock.ts',
-    '^grabby-js-site-config$': '<rootDir>/src/tests/mocks/site-config.mock.ts',
+    '^graby-ts-site-config$': '<rootDir>/src/tests/mocks/site-config.mock.ts',
     '^fontoxpath$': '<rootDir>/src/tests/mocks/fontoxpath.mock.ts',
-    '^dompurify$': '<rootDir>/src/tests/mocks/dompurify.mock.ts'
+    '^dompurify$': '<rootDir>/src/tests/mocks/dompurify.mock.ts',
+    '^@mozilla/readability$': '<rootDir>/src/tests/mocks/readability.mock.ts'
   },
   transform: {
     '^.+\\.tsx?$': 'ts-jest'
   },
   transformIgnorePatterns: [
-    '/node_modules/(?!(grabby-js-site-config)/)'
+    '/node_modules/(?!(graby-ts-site-config)/)'
   ]
 };

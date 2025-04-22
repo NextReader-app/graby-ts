@@ -1,24 +1,23 @@
-import { parseHTML } from 'linkedom';
-import { SiteConfigManager } from 'grabby-js-site-config';
+import { SiteConfigManager } from 'graby-ts-site-config';
 import HttpClient from './lib/HttpClient';
 import ContentExtractor from './lib/ContentExtractor';
 import DomUtils from './lib/DomUtils';
-import { GrabbyOptions, ExtractionResult } from './lib/interfaces';
+import { GrabyOptions, ExtractionResult } from './lib/interfaces';
 
 /**
- * Main Grabby class for content extraction
+ * Main Graby class for content extraction
  */
-class Grabby {
+class Graby {
   private httpClient: HttpClient;
   private siteConfigManager: SiteConfigManager;
   private extractor: ContentExtractor;
-  private options: GrabbyOptions;
+  private options: GrabyOptions;
 
   /**
-   * Create a new Grabby instance
-   * @param options - Options for Grabby
+   * Create a new Graby instance
+   * @param options - Options for Graby
    */
-  constructor(options: GrabbyOptions = {}) {
+  constructor(options: GrabyOptions = {}) {
     this.options = {
       // Default options
       httpClient: {
@@ -30,11 +29,16 @@ class Grabby {
         enableXss: true
       },
       siteConfig: {},
+      silent: false,
       ...options
     };
 
     // Initialize components
-    this.httpClient = new HttpClient(this.options.httpClient);
+    const httpClientOptions = {
+      ...this.options.httpClient,
+      silent: this.options.silent
+    };
+    this.httpClient = new HttpClient(httpClientOptions);
     this.siteConfigManager = new SiteConfigManager();
     this.extractor = new ContentExtractor(this.options.extractor, this.siteConfigManager);
   }
@@ -86,7 +90,9 @@ class Grabby {
 
       return result;
     } catch (error) {
-      console.error('Error extracting content:', error);
+      if (!this.options.silent) {
+        console.error('Error extracting content:', error);
+      }
       throw error;
     }
   }
@@ -111,16 +117,18 @@ class Grabby {
 
       return result;
     } catch (error) {
-      console.error('Error extracting from HTML:', error);
+      if (!this.options.silent) {
+        console.error('Error extracting from HTML:', error);
+      }
       throw error;
     }
   }
 }
 
-export { Grabby, HttpClient, ContentExtractor, DomUtils };
+export { Graby, HttpClient, ContentExtractor, DomUtils };
 export type {
   ExtractionResult,
-  GrabbyOptions,
+  GrabyOptions,
   HttpClientOptions,
   ContentExtractorOptions,
   HttpResponse,
