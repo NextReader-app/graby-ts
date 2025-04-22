@@ -9,6 +9,8 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "allowJs": true,
     "lib": ["es2018", "dom"]
   },
   "include": ["src/**/*"],

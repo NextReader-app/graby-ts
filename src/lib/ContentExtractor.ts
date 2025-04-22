@@ -243,7 +243,7 @@ class ContentExtractor {
             }
           }
         }
-      } catch (e) {
+      } catch (_e) {
         // Ignore JSON parsing errors
       }
     });
@@ -536,7 +536,7 @@ class ContentExtractor {
       try {
         const parsedDate = parseISO(this.date);
         this.date = format(parsedDate, "yyyy-MM-dd'T'HH:mm:ssXXX");
-      } catch (e) {
+      } catch (_e) {
         // Keep original date if parsing fails
       }
     }

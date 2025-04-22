@@ -64,7 +64,7 @@ class DomUtils {
     try {
       // Parse and resolve URL
       return new URLParse(url, base as any).toString();
-    } catch (e) {
+    } catch (_e) {
       return url;
     }
   }
