@@ -49,8 +49,28 @@ class Grabby {
       // Fetch content
       const response = await this.httpClient.fetch(url);
 
-      if (!response.html) {
+      // Check for HTML content
+      if (!response.html && response.contentType.includes('html')) {
         throw new Error('No HTML content found');
+      }
+      
+      // For non-HTML content, return a blank result
+      if (!response.html) {
+        const result: ExtractionResult = {
+          title: '',
+          html: '',
+          authors: [],
+          date: null,
+          language: null,
+          image: null,
+          nextPageUrl: null,
+          isNativeAd: false,
+          success: false,
+          originalUrl: url,
+          finalUrl: response.url,
+          status: response.status,
+        };
+        return result;
       }
 
       // Process HTML
