@@ -41,11 +41,13 @@ console.log(result.image);       // Featured image URL
 - Lazy image loading detection and fixing
 - XSS protection
 - Multipage article support
+- Site-specific HTTP headers
 
 ### 🚧 Coming Soon
 - `wrap_in` functionality to enclose content in specific tags
-- Site-specific HTTP headers
 - PDF and non-HTML content processing
+
+### Not planned
 - Advanced logging system
 
 ## Platform Support

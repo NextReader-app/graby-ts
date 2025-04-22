@@ -37,11 +37,11 @@ class HttpClient {
 
     // Default headers - similar to browser behavior
     const requestHeaders: Record<string, string> = {
-      'User-Agent': this.options.userAgent,
-      'Referer': this.options.referer,
+      'User-Agent': this.getUserAgent(headers),
+      'Referer': this.getReferer(headers),
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
       'Accept-Language': 'en-US,en;q=0.5',
-      ...headers
+      ...this.getAcceptedHeaders(headers)
     };
 
     try {
@@ -75,7 +75,7 @@ class HttpClient {
       if (responseUrl.endsWith('/') && !parsedUrl.toString().endsWith('/')) {
         responseUrl = responseUrl.slice(0, -1);
       }
-      
+
       return {
         url: responseUrl, // Final URL after redirects, without trailing slash
         html,
@@ -104,7 +104,7 @@ class HttpClient {
     if (responseUrl.endsWith('/')) {
       responseUrl = responseUrl.slice(0, -1);
     }
-    
+
     return {
       url: responseUrl,
       html: null,
@@ -126,6 +126,58 @@ class HttpClient {
       result[key] = value;
     });
     return result;
+  }
+
+  /**
+   * Get User-Agent header, prioritizing site config if available
+   * @param headers - Headers from site config
+   * @returns - User-Agent string to use
+   */
+  private getUserAgent(headers: Record<string, string>): string {
+    if (headers['user-agent']) {
+      if (!this.options.silent) {
+        console.log(`Using User-Agent from site config: ${headers['user-agent']}`);
+      }
+      return headers['user-agent'];
+    }
+    return this.options.userAgent;
+  }
+
+  /**
+   * Get Referer header, prioritizing site config if available
+   * @param headers - Headers from site config
+   * @returns - Referer string to use
+   */
+  private getReferer(headers: Record<string, string>): string {
+    if (headers['referer']) {
+      if (!this.options.silent) {
+        console.log(`Using Referer from site config: ${headers['referer']}`);
+      }
+      return headers['referer'];
+    }
+    return this.options.referer;
+  }
+
+  /**
+   * Get other accepted headers from site config
+   * @param headers - Headers from site config
+   * @returns - Object with accepted headers
+   */
+  private getAcceptedHeaders(headers: Record<string, string>): Record<string, string> {
+    const acceptedHeaders: Record<string, string> = {};
+
+    // Only allow specific headers (matching PHP implementation)
+    // PHP accepts: user-agent, referer, cookie, accept
+    // User-agent and referer are handled separately
+    if (headers['cookie']) {
+      acceptedHeaders['Cookie'] = headers['cookie'];
+    }
+
+    if (headers['accept']) {
+      acceptedHeaders['Accept'] = headers['accept'];
+    }
+
+    return acceptedHeaders;
   }
 }
 

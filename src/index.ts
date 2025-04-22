@@ -53,8 +53,14 @@ class Graby {
    */
   async extract(url: string): Promise<ExtractionResult> {
     try {
-      // Fetch content
-      const response = await this.httpClient.fetch(url);
+      // Get site config for the initial URL
+      const initialUrl = new URLParse(url);
+      let siteConfig = await this.siteConfigManager.getConfigForHost(initialUrl.hostname);
+
+      // Fetch content with site config's HTTP headers
+      const response = await this.httpClient.fetch(url, {
+        headers: siteConfig?.http_header || {}
+      });
 
       // Check for HTML content
       if (!response.html && response.contentType.includes('html')) {
@@ -80,8 +86,11 @@ class Graby {
         return result;
       }
 
-      // Get site config for this URL
-      const siteConfig = await this.siteConfigManager.getConfigForHost(new URLParse(response.url).hostname);
+      // If the URL was redirected to a different hostname, get the new site config
+      const responseUrl = new URLParse(response.url);
+      if (responseUrl.hostname !== initialUrl.hostname) {
+        siteConfig = await this.siteConfigManager.getConfigForHost(responseUrl.hostname);
+      }
 
       // Check for single page view if available
       if (siteConfig.single_page_link && siteConfig.single_page_link.length > 0) {
@@ -89,7 +98,11 @@ class Graby {
 
         if (singlePageUrl) {
           try {
-            const singlePageResponse = await this.httpClient.fetch(singlePageUrl, { skipTypeCheck: true });
+            const singlePageResponse = await this.httpClient.fetch(singlePageUrl, {
+              skipTypeCheck: true,
+              headers: siteConfig.http_header || {}
+            });
+
             if (!this.options.silent) {
               console.log(`Retrieved single-page view from "${singlePageUrl}"`);
             }
@@ -98,6 +111,12 @@ class Graby {
               // Use the single page content
               response.html = singlePageResponse.html;
               response.url = singlePageResponse.url;
+
+              // Check if we need to update the site config for the single page URL
+              const singlePageHostname = new URLParse(singlePageResponse.url).hostname;
+              if (singlePageHostname !== responseUrl.hostname) {
+                siteConfig = await this.siteConfigManager.getConfigForHost(singlePageHostname);
+              }
             }
           } catch (error) {
             if (!this.options.silent) {
@@ -214,8 +233,14 @@ class Graby {
       processedUrls.add(absoluteUrl);
 
       try {
-        // Fetch the next page
-        const nextPageResponse = await this.httpClient.fetch(absoluteUrl);
+        // Get site config for next page URL
+        const nextPageHostname = new URLParse(absoluteUrl).hostname;
+        const siteConfig = await this.siteConfigManager.getConfigForHost(nextPageHostname);
+
+        // Fetch the next page with site config's HTTP headers
+        const nextPageResponse = await this.httpClient.fetch(absoluteUrl, {
+          headers: siteConfig?.http_header || {}
+        });
 
         if (!nextPageResponse.html) {
           if (!this.options.silent) {
@@ -223,9 +248,6 @@ class Graby {
           }
           break;
         }
-
-        // Get site config for this URL
-        const siteConfig = await this.siteConfigManager.getConfigForHost(new URLParse(absoluteUrl).hostname);
 
         // Process the page
         const tempExtractor = new ContentExtractor(this.options.extractor, this.siteConfigManager);
