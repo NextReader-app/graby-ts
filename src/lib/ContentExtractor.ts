@@ -1,6 +1,6 @@
 import { parseHTML } from 'linkedom';
 import { Readability } from '@mozilla/readability';
-import { evaluate, evaluateXPathToNodes } from 'fontoxpath';
+import { evaluateXPathToNodes } from 'fontoxpath';
 import URLParse from 'url-parse';
 import { format, parseISO } from 'date-fns';
 import DOMPurify from 'dompurify';
@@ -234,7 +234,7 @@ class ContentExtractor {
       if (article) {
         // Use article data if needed
         if (!this.title) {
-          this.title = article.title;
+          this.title = article.title || null;
         }
 
         // Create content element
@@ -293,8 +293,9 @@ class ContentExtractor {
     if (siteConfig.title && siteConfig.title.length > 0) {
       for (const titleXPath of siteConfig.title) {
         try {
-          const titleNode = evaluateXPathToNodes(titleXPath, document, null, null)[0];
-          if (titleNode) {
+          const titleNodes = evaluateXPathToNodes(titleXPath, document, null, null);
+          if (titleNodes.length > 0) {
+            const titleNode = titleNodes[0] as Node;
             this.title = titleNode.textContent || null;
             break;
           }
@@ -313,7 +314,10 @@ class ContentExtractor {
             // Create a container for the content if multiple nodes
             const container = document.createElement('div');
             bodyNodes.forEach(node => {
-              container.appendChild(node.cloneNode(true));
+              const elemNode = node as Node;
+              if (elemNode.cloneNode) {
+                container.appendChild(elemNode.cloneNode(true));
+              }
             });
             this.content = container;
             break;
@@ -330,8 +334,9 @@ class ContentExtractor {
         try {
           const stripNodes = evaluateXPathToNodes(stripXPath, document, null, null);
           stripNodes.forEach(node => {
-            if (node.parentNode) {
-              node.parentNode.removeChild(node);
+            const elemNode = node as Node;
+            if (elemNode.parentNode) {
+              elemNode.parentNode.removeChild(elemNode);
             }
           });
         } catch (e) {
@@ -346,14 +351,15 @@ class ContentExtractor {
         try {
           const nextPageNodes = evaluateXPathToNodes(nextPageXPath, document, null, null);
           if (nextPageNodes.length > 0) {
-            const nextPageNode = nextPageNodes[0];
+            const nextPageNode = nextPageNodes[0] as Node;
             if (nextPageNode.nodeType === 1) { // Element node
               const element = nextPageNode as Element;
               if (element.hasAttribute('href')) {
                 this.nextPageUrl = element.getAttribute('href');
               }
             } else if (nextPageNode.nodeType === 2) { // Attribute node
-              this.nextPageUrl = nextPageNode.nodeValue;
+              const attrNode = nextPageNode as Attr;
+              this.nextPageUrl = attrNode.nodeValue;
             } else {
               this.nextPageUrl = nextPageNode.textContent || null;
             }
@@ -370,7 +376,7 @@ class ContentExtractor {
    * Post-process extracted content
    * @param parsedUrl - Parsed URL
    */
-  private postProcess(parsedUrl: URLParse): void {
+  private postProcess(parsedUrl: URLParse<string>): void {
     if (this.content) {
       // Fix relative URLs to absolute
       DomUtils.makeUrlsAbsolute(this.content, parsedUrl.toString());

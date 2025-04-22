@@ -50,7 +50,7 @@ class DomUtils {
    * @param base - Base URL
    * @returns - Resolved absolute URL
    */
-  static resolveUrl(url: string, base: URLParse): string {
+  static resolveUrl(url: string, base: URLParse<string>): string {
     // Skip already absolute URLs
     if (/^(https?:)?\/\//i.test(url)) {
       return url;

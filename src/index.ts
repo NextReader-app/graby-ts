@@ -35,7 +35,7 @@ class Grabby {
 
     // Initialize components
     this.httpClient = new HttpClient(this.options.httpClient);
-    this.siteConfigManager = new SiteConfigManager(this.options.siteConfig);
+    this.siteConfigManager = new SiteConfigManager();
     this.extractor = new ContentExtractor(this.options.extractor, this.siteConfigManager);
   }
 
