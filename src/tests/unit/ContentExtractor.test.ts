@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 import ContentExtractor from '../../lib/ContentExtractor.js';
-import { MockSiteConfigManager } from '../mocks/siteconfig.mock.js';
+import { createMockSiteConfigManager } from '../mocks/siteconfig.mock.js';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { parseHTML } from 'linkedom/worker';
@@ -12,19 +12,25 @@ const loadFixture = (name: string): string => {
 
 describe('ContentExtractor', () => {
   let extractor: ContentExtractor;
-  let mockSiteConfigManager: MockSiteConfigManager;
+  let mockSiteConfigManager: ReturnType<typeof createMockSiteConfigManager>;
 
   beforeEach(() => {
-    // Create a custom SiteConfigManager that allows us to override config
-    mockSiteConfigManager = new MockSiteConfigManager();
-    // Cast to any to allow setting mockConfig property
-    (mockSiteConfigManager as any).mockConfig = null;
+    // Create a fresh mock with clean state for each test
+    mockSiteConfigManager = createMockSiteConfigManager();
     extractor = new ContentExtractor({}, mockSiteConfigManager);
   });
 
   test('extracts content using site config rules', async () => {
+    // Use the basic article fixture
     const html = loadFixture('article.html');
     const url = 'https://example.com/article';
+
+    // Set custom config for this test
+    mockSiteConfigManager.setMockConfig({
+      title: ['//h1[@class="title"]'],
+      body: ['//div[@class="content"]'],
+      strip: ['//div[@class="ads"]']
+    });
 
     const success = await extractor.process(html, url);
 
@@ -36,39 +42,66 @@ describe('ContentExtractor', () => {
     expect(result.html).not.toContain('This is an advertisement');
   });
 
-  test('extracts metadata from OpenGraph tags', async () => {
-    // Create a direct instance and manually set fields to test the functionality
-    const extractorInstance = new ContentExtractor({}, mockSiteConfigManager);
-    
-    // Manually set OpenGraph fields as if they were extracted
-    extractorInstance['title'] = 'OpenGraph Title';
-    extractorInstance['image'] = 'https://example.com/og-image.jpg';
-    extractorInstance['date'] = '2023-08-15T14:30:00Z';
-    extractorInstance['language'] = 'en_US';
-    extractorInstance['success'] = true;
+  test('XPath has higher priority than OpenGraph', async () => {
+    // Use the article with OpenGraph metadata
+    const html = loadFixture('article-with-opengraph.html');
+    const url = 'https://example.com/article';
 
-    const result = extractorInstance.getResult();
-    
-    // Validate that the extractor returns what we set
-    expect(result.title).toBe('OpenGraph Title'); 
+    // Set config that will match the h1 element
+    mockSiteConfigManager.setMockConfig({
+      title: ['//h1[@class="title"]'],
+      body: ['//div[@class="content"]']
+    });
+
+    await extractor.process(html, url);
+
+    const result = extractor.getResult();
+
+    // XPath has higher priority than OpenGraph in PHP version
+    expect(result.title).toBe('Test Article Title');
+    expect(result.image).toBe('https://example.com/og-image.jpg');
+    expect(result.date).toMatch(/2023-08-15/);
+    expect(result.language).toBe('en_US');
+  });
+
+  test('OpenGraph is used when siteConfig XPath fails', async () => {
+    // Use the article with OpenGraph metadata
+    const html = loadFixture('article-with-opengraph.html');
+    const url = 'https://example.com/article';
+
+    // Set config with XPath that won't match anything
+    mockSiteConfigManager.setMockConfig({
+      title: ['//non-existent-element[@impossible="true" and @doesNotExist="at-all"]'],
+      body: ['//div[@class="content"]']
+    });
+
+    await extractor.process(html, url);
+
+    const result = extractor.getResult();
+
+    // OpenGraph should be used as fallback when XPath fails
+    expect(result.title).toBe('OpenGraph Title');
     expect(result.image).toBe('https://example.com/og-image.jpg');
     expect(result.date).toMatch(/2023-08-15/);
     expect(result.language).toBe('en_US');
   });
 
   test('extracts metadata from JSON-LD', async () => {
-    // Create a direct instance and manually set fields to test the functionality
-    const extractorInstance = new ContentExtractor({}, mockSiteConfigManager);
-    
-    // Manually set JSON-LD fields as if they were extracted
-    extractorInstance['title'] = 'JSON-LD Headline';
-    extractorInstance['date'] = '2023-08-15T14:30:00Z';
-    extractorInstance['authors'] = ['Jane Doe'];
-    extractorInstance['success'] = true;
+    // Use the article with JSON-LD metadata
+    const html = loadFixture('article-with-jsonld.html');
+    const url = 'https://example.com/article';
 
-    const result = extractorInstance.getResult();
+    // Set config with XPath that will match h1 element
+    mockSiteConfigManager.setMockConfig({
+      title: ['//nonexistent'],
+      body: ['//div[@class="content"]']
+    });
 
-    // Validate that the extractor returns what we set
+    await extractor.process(html, url);
+
+    const result = extractor.getResult();
+
+    // Validate JSON-LD metadata
     expect(result.title).toBe('JSON-LD Headline');
     expect(result.date).toMatch(/2023-08-15/);
     expect(result.authors).toContain('Jane Doe');
@@ -88,9 +121,14 @@ describe('ContentExtractor', () => {
     `;
     const url = 'https://news.example.org/article/page1';
 
-    // Manually set the next page URL to simulate XPath finding the next page link
+    // Set config with next page link pattern
+    mockSiteConfigManager.setMockConfig({
+      title: ['//h1'],
+      body: ['//article'],
+      next_page_link: ['//a[@class="next-page"]']
+    });
+
     await extractor.process(html, url);
-    (extractor as any).nextPageUrl = '/article/page2';
 
     const result = extractor.getResult();
     expect(result.nextPageUrl).toBe('/article/page2');
@@ -101,7 +139,7 @@ describe('ContentExtractor', () => {
       <html>
         <body>
           <h1 class="article-title">Sponsored Article</h1>
-          <div class="sponsored-content"></div>
+          <div class="sponsored-content">Sponsored</div>
           <article class="main-content">
             <p>This is sponsored content</p>
           </article>
@@ -110,65 +148,75 @@ describe('ContentExtractor', () => {
     `;
     const url = 'https://news.example.org/sponsored';
 
-    // Manually set the isNativeAd flag
+    // Set config with native ad clues
+    mockSiteConfigManager.setMockConfig({
+      title: ['//h1'],
+      body: ['//article'],
+      native_ad_clue: ['//div[@class="sponsored-content"]']
+    });
+
     await extractor.process(html, url);
-    (extractor as any).isNativeAd = true;
 
     const result = extractor.getResult();
     expect(result.isNativeAd).toBe(true);
   });
 
   test('falls back to Readability when site config fails', async () => {
-    // Mock a successful Readability result directly
-    const readabilityResult = {
-      title: 'Readability Title',
-      authors: ['Readability Author'],
-      html: '<p>Readability content</p>', // Just set the HTML directly
-      success: true
-    };
-    
-    expect(readabilityResult.title).toBe('Readability Title');
-    expect(readabilityResult.html).toContain('Readability content');
-    expect(readabilityResult.authors).toContain('Readability Author');
-  });
-
-  test('processes string replacements from site config', async () => {
-    const html = `
-      <html>
-        <body>
-          <h1 class="bad-title">This should be replaced</h1>
-          <div class="ad-container">This ad should be removed</div>
-          <div class="content">Article content with title word</div>
-        </body>
-      </html>
-    `;
+    // Use the basic article fixture but with incorrect selectors
+    const html = loadFixture('article.html');
     const url = 'https://example.com/article';
 
-    // Set custom config with string replacements that we can verify
-    (mockSiteConfigManager as any).mockConfig = {
-      title: ['.//h1'],
-      body: ['.//div[@class="content"]'],
-      find_string: ['bad-title', 'ad-container'],
-      replace_string: ['good-title', 'content-container']
-    };
+    // Set config with selectors that won't match anything
+    mockSiteConfigManager.setMockConfig({
+      title: ['//nonexistent'],
+      body: ['//nonexistent']
+    });
 
     await extractor.process(html, url);
 
-    // Since find_string and replace_string are applied to the entire HTML before parsing,
-    // we need to adjust our test to check for what's actually happening in the ContentExtractor
-    
-    // Reset the mock config after testing
-    (mockSiteConfigManager as any).mockConfig = null;
+    // The mock readability will be used here, so we check for expected values
+    const result = extractor.getResult();
+    expect(result.success).toBe(true);
+    expect(result.title).toBe('Test Article');
+    expect(result.html).toContain('readability-page');
+    expect(result.authors).toContain('By John Smith');
+  });
 
-    // The test checks for things that don't make sense with how the mock is set up
-    // Instead, let's verify that the content extractor ran successfully
-    expect(extractor.getResult().success).toBe(true);
+  test('processes string replacements from site config', async () => {
+    // Use the basic article fixture
+    const html = loadFixture('article.html');
+    const url = 'https://example.com/article';
+
+    // Set config with string replacements
+    mockSiteConfigManager.setMockConfig({
+      title: ['//h1[@class="title"]'],
+      body: ['//div[@class="content"]'],
+      find_string: ['Test Article Title', 'advertisement'],
+      replace_string: ['Modified Title', 'sponsor content']
+    });
+
+    await extractor.process(html, url);
+
+    const result = extractor.getResult();
+
+    // Verify the extractor ran successfully
+    expect(result.success).toBe(true);
+
+    // The title should reflect what's in the document, with modifications
+    expect(result.title).toBe('Modified Title');
+
+    // Content should contain the original content
+    expect(result.html).toContain('This is the first paragraph of the article.');
+
+    // The replacement should have occurred in the processed HTML
+    expect(result.html).not.toContain('advertisement');
+    expect(result.html).toContain('sponsor content');
   });
 
   test('validates the accepted wrap_in tags', () => {
     // Create a test instance
     const testExtractor = new ContentExtractor({}, mockSiteConfigManager);
-    
+
     // Check that the acceptedWrapInTags property contains the expected tags
     const acceptedTags = (testExtractor as any).acceptedWrapInTags;
     expect(acceptedTags).toContain('blockquote');
@@ -180,48 +228,84 @@ describe('ContentExtractor', () => {
   test('has limited set of accepted wrap_in tags for security', () => {
     // Direct test of the acceptedWrapInTags property
     const testExtractor = new ContentExtractor({}, mockSiteConfigManager);
-    
+
     // Access the private property using type assertion
     const acceptedTags = (testExtractor as any).acceptedWrapInTags;
-    
+
     // Verify it contains only the expected safe tags
     expect(acceptedTags).toEqual(['blockquote', 'p', 'div']);
-    
+
     // Verify it doesn't contain unsafe tags
     expect(acceptedTags).not.toContain('script');
     expect(acceptedTags).not.toContain('iframe');
     expect(acceptedTags).not.toContain('object');
   });
-  
+
   test('logs warning for disallowed wrap_in tags', () => {
     // Create a direct instance for testing
     const testExtractor = new ContentExtractor({}, mockSiteConfigManager);
-    
+
     // Mock console.warn
     const originalWarn = console.warn;
     const mockWarn = vi.fn();
     console.warn = mockWarn;
-    
+
+    // Use the basic article fixture
+    const html = loadFixture('article.html');
+
     // Create a mock site config with a disallowed tag
     const mockConfig = {
       wrap_in: {
         'script': '//div' // script is not allowed
       }
     };
-    
-    // Directly call the method that should trigger the warning
-    // Create a mock document
-    const { document } = parseHTML('<html><body></body></html>');
-    
+
     // Call the method that processes wrap_in directives
-    (testExtractor as any).applySiteConfig(mockConfig, document);
-    
+    (testExtractor as any).applySiteConfig(mockConfig, parseHTML(html).document);
+
     // Verify the warning was logged
     expect(mockWarn).toHaveBeenCalledWith(
       expect.stringContaining('Tag "script" is not allowed for wrap_in')
     );
-    
+
     // Restore console.warn
     console.warn = originalWarn;
+  });
+
+  // New test specific to XPath functionality using the HTML fixtures
+  test('correctly evaluates complex XPath expressions', async () => {
+    // Use the basic article fixture
+    const html = loadFixture('article.html');
+    const url = 'https://example.com/article';
+
+    // Set config with complex XPath expressions
+    mockSiteConfigManager.setMockConfig({
+      title: ['//h1[@class="title"]'],
+      body: ['//div[@class="content"]'],
+      strip: ['//div[@class="ads"]'],
+      wrap_in: {
+        'blockquote': '//p[contains(text(), "first paragraph")]'
+      }
+    });
+
+    await extractor.process(html, url);
+
+    const result = extractor.getResult();
+
+    // The extractor should have run successfully
+    expect(result.success).toBe(true);
+
+    // Title should be extracted
+    expect(result.title).toBe('Test Article Title');
+
+    // Content should include the paragraphs
+    expect(result.html).toContain('This is the first paragraph of the article.');
+    expect(result.html).toContain('This is the second paragraph');
+
+    // The first paragraph should be wrapped in a blockquote
+    expect(result.html).toMatch(/<blockquote[^>]*>.*?first paragraph.*?<\/blockquote>/s);
+
+    // Advertisement content should be stripped
+    expect(result.html).not.toContain('This is an advertisement');
   });
 });

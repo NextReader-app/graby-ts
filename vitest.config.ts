@@ -14,10 +14,5 @@ export default defineConfig({
       exclude: ['src/tests/**', 'src/**/*.d.ts', 'dist/**', '**/vite/**', '*.config.js', '*.config.ts']
     },
     setupFiles: ['./vitest.setup.js'],
-    alias: {
-      'graby-ts-site-config': resolve(__dirname, './src/tests/mocks/site-config.mock.ts'),
-      'fontoxpath': resolve(__dirname, './src/tests/mocks/fontoxpath.mock.ts'),
-      '@mozilla/readability': resolve(__dirname, './src/tests/mocks/readability.mock.ts')
-    }
   }
 })

@@ -43,6 +43,7 @@ console.log(result.image);       // Featured image URL
 - Multipage article support
 - Site-specific HTTP headers
 - `wrap_in` functionality to enclose content in specific tags
+- Unlike PHP Graby, this implementation uses the `xpath-to-selector` library to convert XPath expressions to CSS selectors instead of providing full XPath support. This works in most cases where simple XPath expressions can be converted to CSS.
 
 ### 🚧 Coming Soon
 - PDF and non-HTML content processing

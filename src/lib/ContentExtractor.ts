@@ -1,11 +1,11 @@
 import { parseHTML } from 'linkedom/worker';
 import { Readability } from '@mozilla/readability';
-import { evaluateXPathToNodes, Node as FontoxpathNode } from 'fontoxpath';
 import URLParse from 'url-parse';
 import { format, parseISO } from 'date-fns';
 import createDOMPurify from 'dompurify';
 import { ContentExtractorOptions, ExtractionResult, SiteConfig } from './interfaces.js';
 import DomUtils from './DomUtils.js';
+import XPathHelper from './XPathHelper.js';
 
 import type { SiteConfig as ExternalSiteConfig } from 'graby-ts-site-config/dist/types.js';
 
@@ -210,12 +210,16 @@ class ContentExtractor {
     // Extract og:title, og:image, etc.
     const ogTitle = document.querySelector('meta[property="og:title"]');
     const ogImage = document.querySelector('meta[property="og:image"]');
+    const ogLocale = document.querySelector('meta[property="og:locale"]');
 
     // OpenGraph should override basic metadata
     if (ogTitle && ogTitle.getAttribute('content')) {
       this.title = ogTitle.getAttribute('content');
     }
     if (ogImage) this.image = ogImage.getAttribute('content');
+    if (ogLocale && ogLocale.getAttribute('content')) {
+      this.language = ogLocale.getAttribute('content');
+    }
 
     // Extract article metadata
     const articlePublished = document.querySelector('meta[property="article:published_time"]');
@@ -365,30 +369,31 @@ class ContentExtractor {
             siteConfig.if_page_contains.single_page_link[pattern]) {
 
           const condition = siteConfig.if_page_contains.single_page_link[pattern];
-          const conditionNodes = evaluateXPathToNodes(condition, document, null, null);
+          const conditionNodes = XPathHelper.evaluateXPath(condition, document);
 
           // Skip this pattern if condition isn't met
-          if (!conditionNodes || conditionNodes.length === 0) {
+          if (Array.isArray(conditionNodes) && conditionNodes.length === 0) {
             continue;
           }
         }
 
         // Try to evaluate the XPath expression
-        const result = evaluateXPathToNodes(pattern, document, null, null);
+        const result = XPathHelper.evaluateXPath(pattern, document);
 
         if (typeof result === 'string') {
           this.singlePageUrl = String(result).trim();
           break;
-        } else if (result && result.length > 0) {
+        } else if (Array.isArray(result) && result.length > 0) {
           for (const node of result) {
-            if (node instanceof Element && node.hasAttribute('href')) {
-              this.singlePageUrl = node.getAttribute('href');
+            // Safe check for node properties
+            if (this.hasAttribute(node, 'href')) {
+              this.singlePageUrl = this.getAttribute(node, 'href');
               break;
-            } else if (node instanceof Attr && node.value) {
-              this.singlePageUrl = node.value;
+            } else if (this.hasProperty(node, 'value') && typeof this.getProperty(node, 'value') === 'string') {
+              this.singlePageUrl = this.getProperty(node, 'value');
               break;
-            } else if (node && (node as any).textContent) {
-              this.singlePageUrl = (node as any).textContent.trim();
+            } else if (this.hasProperty(node, 'textContent')) {
+              this.singlePageUrl = this.getProperty(node, 'textContent')?.trim() || null;
               break;
             }
           }
@@ -422,30 +427,31 @@ class ContentExtractor {
             siteConfig.if_page_contains.next_page_link[pattern]) {
 
           const condition = siteConfig.if_page_contains.next_page_link[pattern];
-          const conditionNodes = evaluateXPathToNodes(condition, document, null, null);
+          const conditionNodes = XPathHelper.evaluateXPath(condition, document);
 
           // Skip this pattern if condition isn't met
-          if (!conditionNodes || conditionNodes.length === 0) {
+          if (Array.isArray(conditionNodes) && conditionNodes.length === 0) {
             continue;
           }
         }
 
         // Try to evaluate the XPath expression
-        const result = evaluateXPathToNodes(pattern, document, null, null);
+        const result = XPathHelper.evaluateXPath(pattern, document);
 
         if (typeof result === 'string') {
           this.nextPageUrl = String(result).trim();
           break;
-        } else if (result && result.length > 0) {
+        } else if (Array.isArray(result) && result.length > 0) {
           for (const node of result) {
-            if (node instanceof Element && node.hasAttribute('href')) {
-              this.nextPageUrl = node.getAttribute('href');
+            // Safe check for node properties
+            if (this.hasAttribute(node, 'href')) {
+              this.nextPageUrl = this.getAttribute(node, 'href');
               break;
-            } else if (node instanceof Attr && node.value) {
-              this.nextPageUrl = node.value;
+            } else if (this.hasProperty(node, 'value') && typeof this.getProperty(node, 'value') === 'string') {
+              this.nextPageUrl = this.getProperty(node, 'value');
               break;
-            } else if (node && (node as any).textContent) {
-              this.nextPageUrl = (node as any).textContent.trim();
+            } else if (this.hasProperty(node, 'textContent')) {
+              this.nextPageUrl = this.getProperty(node, 'textContent')?.trim() || null;
               break;
             }
           }
@@ -461,12 +467,56 @@ class ContentExtractor {
   }
 
   /**
+   * Safely check if node has an attribute
+   * @param node - Node to check
+   * @param attrName - Attribute name
+   * @returns - True if attribute exists
+   */
+  private hasAttribute(node: any, attrName: string): boolean {
+    return node &&
+           typeof node.hasAttribute === 'function' &&
+           node.hasAttribute(attrName);
+  }
+
+  /**
+   * Safely get attribute value
+   * @param node - Node to get attribute from
+   * @param attrName - Attribute name
+   * @returns - Attribute value or null
+   */
+  private getAttribute(node: any, attrName: string): string | null {
+    return node &&
+           typeof node.getAttribute === 'function' ?
+           node.getAttribute(attrName) : null;
+  }
+
+  /**
+   * Safely check if node has a property
+   * @param node - Node to check
+   * @param propName - Property name
+   * @returns - True if property exists
+   */
+  private hasProperty(node: any, propName: string): boolean {
+    return node && propName in node;
+  }
+
+  /**
+   * Safely get property value
+   * @param node - Node to get property from
+   * @param propName - Property name
+   * @returns - Property value or null
+   */
+  private getProperty(node: any, propName: string): any {
+    return node && propName in node ? node[propName] : null;
+  }
+
+  /**
    * Wrap elements with the provided tag
    * @param elements - Elements to wrap
    * @param tag - HTML tag to wrap elements with
    * @param logMessage - Optional log message
    */
-  private wrapElements(elements: FontoxpathNode[], tag: string, logMessage?: string): void {
+  private wrapElements(elements: Node[], tag: string, logMessage?: string): void {
     if (!elements || elements.length === 0) {
       return;
     }
@@ -476,12 +526,19 @@ class ContentExtractor {
     }
 
     for (const item of elements) {
-      if (item instanceof Element && item.parentNode) {
-        const document = item.ownerDocument;
-        const newNode = document.createElement(tag);
-        newNode.innerHTML = item.outerHTML;
+      // Safely check for required properties
+      if (item && this.hasProperty(item, 'parentNode') &&
+          this.hasProperty(item, 'ownerDocument') &&
+          this.hasProperty(item, 'outerHTML')) {
 
-        item.parentNode.replaceChild(newNode, item);
+        const document = this.getProperty(item, 'ownerDocument');
+        const newNode = document.createElement(tag);
+        newNode.innerHTML = this.getProperty(item, 'outerHTML');
+
+        const parentNode = this.getProperty(item, 'parentNode');
+        if (parentNode && typeof parentNode.replaceChild === 'function') {
+          parentNode.replaceChild(newNode, item);
+        }
       }
     }
   }
@@ -492,16 +549,13 @@ class ContentExtractor {
    * @param document - DOM document
    */
   private applySiteConfig(siteConfig: SiteConfig, document: Document): void {
-    // This is a simplified implementation
-    // In a full version, this would apply all the XPath patterns from site config
-
-    // Extract title
+    // Extract title - PHP version always overwrites previously set values from OpenGraph or JSON-LD
     if (siteConfig.title && siteConfig.title.length > 0) {
       for (const titleXPath of siteConfig.title) {
         try {
-          const titleNodes = evaluateXPathToNodes(titleXPath, document, null, null);
-          if (titleNodes.length > 0) {
-            const titleNode = titleNodes[0] as Node;
+          const titleNodes = XPathHelper.evaluateXPath(titleXPath, document);
+          if (Array.isArray(titleNodes) && titleNodes.length > 0) {
+            const titleNode = titleNodes[0];
             this.title = titleNode.textContent || null;
             break;
           }
@@ -515,8 +569,8 @@ class ContentExtractor {
     if (siteConfig.native_ad_clue && siteConfig.native_ad_clue.length > 0) {
       for (const clueXPath of siteConfig.native_ad_clue) {
         try {
-          const clueNodes = evaluateXPathToNodes(clueXPath, document, null, null);
-          if (clueNodes.length > 0) {
+          const clueNodes = XPathHelper.evaluateXPath(clueXPath, document);
+          if (Array.isArray(clueNodes) && clueNodes.length > 0) {
             this.isNativeAd = true;
             break;
           }
@@ -526,30 +580,7 @@ class ContentExtractor {
       }
     }
 
-    // Extract main content
-    if (siteConfig.body && siteConfig.body.length > 0) {
-      for (const bodyXPath of siteConfig.body) {
-        try {
-          const bodyNodes = evaluateXPathToNodes(bodyXPath, document, null, null);
-          if (bodyNodes.length > 0) {
-            // Create a container for the content if multiple nodes
-            const container = document.createElement('div');
-            bodyNodes.forEach(node => {
-              const elemNode = node as Node;
-              if (elemNode.cloneNode) {
-                container.appendChild(elemNode.cloneNode(true));
-              }
-            });
-            this.content = container;
-            break;
-          }
-        } catch (e) {
-          console.error('Error evaluating body XPath:', e);
-        }
-      }
-    }
-
-    // Handle wrap_in rules - wrap elements with specified tags
+    // Apply wrap_in rules before stripping elements
     if (siteConfig.wrap_in) {
       for (const [tag, pattern] of Object.entries(siteConfig.wrap_in)) {
         // Only allow specific tags for semantic HTML reasons
@@ -559,9 +590,9 @@ class ContentExtractor {
         }
 
         try {
-          const elems = evaluateXPathToNodes(pattern, document, null, null);
-          if (elems.length > 0) {
-            this.wrapElements(Array.from(elems), tag, `Wrapping ${elems.length} elements with ${tag}`);
+          const elems = XPathHelper.evaluateXPath(pattern, document);
+          if (Array.isArray(elems) && elems.length > 0) {
+            this.wrapElements(elems, tag, `Wrapping ${elems.length} elements with ${tag}`);
           }
         } catch (e) {
           console.error('Error evaluating wrap_in XPath:', e);
@@ -569,19 +600,47 @@ class ContentExtractor {
       }
     }
 
-    // Handle strip rules - remove unwanted elements
+    // Strip unwanted elements BEFORE extracting content
+    // This is the key optimization - we strip unwanted elements from the document
+    // before cloning nodes to this.content
     if (siteConfig.strip && siteConfig.strip.length > 0) {
       for (const stripXPath of siteConfig.strip) {
         try {
-          const stripNodes = evaluateXPathToNodes(stripXPath, document, null, null);
-          stripNodes.forEach(node => {
-            const elemNode = node as Node;
-            if (elemNode.parentNode) {
-              elemNode.parentNode.removeChild(elemNode);
-            }
-          });
+          const stripNodes = XPathHelper.evaluateXPath(stripXPath, document);
+          if (Array.isArray(stripNodes)) {
+            stripNodes.forEach(node => {
+              if (node && this.hasProperty(node, 'parentNode')) {
+                const parentNode = this.getProperty(node, 'parentNode');
+                if (parentNode && typeof parentNode.removeChild === 'function') {
+                  parentNode.removeChild(node);
+                }
+              }
+            });
+          }
         } catch (e) {
           console.error('Error evaluating strip XPath:', e);
+        }
+      }
+    }
+
+    // Extract main content AFTER stripping unwanted elements
+    if (siteConfig.body && siteConfig.body.length > 0) {
+      for (const bodyXPath of siteConfig.body) {
+        try {
+          const bodyNodes = XPathHelper.evaluateXPath(bodyXPath, document);
+          if (Array.isArray(bodyNodes) && bodyNodes.length > 0) {
+            // Create a container for the content if multiple nodes
+            const container = document.createElement('div');
+            bodyNodes.forEach(node => {
+              if (node && typeof (node as any).cloneNode === 'function') {
+                container.appendChild((node as any).cloneNode(true));
+              }
+            });
+            this.content = container;
+            break;
+          }
+        } catch (e) {
+          console.error('Error evaluating body XPath:', e);
         }
       }
     }
