@@ -2,25 +2,13 @@
   "name": "graby-ts",
   "version": "0.2.3",
   "description": "TypeScript version of Graby content extraction library",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/index.node.js",
+  "types": "dist/index.node.d.ts",
   "type": "module",
   "exports": {
-    ".": {
-      "require": "./dist/index.js",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
-    },
-    "./node": {
-      "require": "./dist/index.node.js",
-      "import": "./dist/index.node.js",
-      "default": "./dist/index.node.js"
-    },
-    "./nativescript": {
-      "require": "./dist/index.nativescript.js",
-      "import": "./dist/index.nativescript.js",
-      "default": "./dist/index.nativescript.js"
-    }
+    ".": "./dist/index.node.js",
+    "./node": "./dist/index.node.js",
+    "./nativescript": "./dist/index.nativescript.js"
   },
   "files": [
     "dist"
