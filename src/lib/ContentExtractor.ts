@@ -3,7 +3,7 @@ import { Readability } from '@mozilla/readability';
 import { evaluateXPathToNodes, Node as FontoxpathNode } from 'fontoxpath';
 import URLParse from 'url-parse';
 import { format, parseISO } from 'date-fns';
-import DOMPurify from 'dompurify';
+import createDOMPurify from 'dompurify';
 import { ContentExtractorOptions, ExtractionResult, SiteConfig } from './interfaces.js';
 import DomUtils from './DomUtils.js';
 
@@ -21,6 +21,7 @@ class ContentExtractor {
   private options: Required<ContentExtractorOptions>;
   private siteConfigManager: SiteConfigManager;
   private document: Document | null = null;
+  private window: any = null;
   private title: string | null = null;
   private content: Element | null = null;
   private authors: string[] = [];
@@ -53,6 +54,7 @@ class ContentExtractor {
    */
   reset(): void {
     this.document = null;
+    this.window = null;
     this.title = null;
     this.content = null;
     this.authors = [];
@@ -88,9 +90,10 @@ class ContentExtractor {
       html = this.processStringReplacements(html, siteConfig);
     }
 
-    // Parse HTML with LinkedOM
-    const { document } = parseHTML(html);
+    // Parse HTML with LinkedOM and store window
+    const { document, window } = parseHTML(html);
     this.document = document;
+    this.window = window;
 
     // Fix document for Readability compatibility
     this.prepareDocumentForReadability(document, url);
@@ -617,25 +620,34 @@ class ContentExtractor {
    * Apply XSS protection to content
    */
   private applyXssProtection(): void {
-    if (!this.content) return;
+    if (!this.content || !this.window) return;
 
-    // Use DOMPurify to sanitize content
-    const html = this.content.innerHTML;
-    const clean = DOMPurify.sanitize(html, {
-      ALLOWED_TAGS: [
-        'a', 'b', 'blockquote', 'br', 'caption', 'code', 'div', 'em',
-        'figure', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'i', 'img',
-        'li', 'ol', 'p', 'pre', 'section', 'strong', 'table', 'tbody',
-        'td', 'th', 'thead', 'tr', 'ul', 'iframe'
-      ],
-      ALLOWED_ATTR: [
-        'href', 'src', 'srcset', 'alt', 'title', 'class', 'id', 'width',
-        'height', 'target'
-      ],
-      KEEP_CONTENT: true
-    });
+    try {
+      // Initialize DOMPurify with the window from linkedom
+      const purify = createDOMPurify(this.window);
 
-    this.content.innerHTML = clean;
+      // Use the initialized instance for sanitization
+      const html = this.content.innerHTML;
+      const clean = purify.sanitize(html, {
+        ALLOWED_TAGS: [
+          'a', 'b', 'blockquote', 'br', 'caption', 'code', 'div', 'em',
+          'figure', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'i', 'img',
+          'li', 'ol', 'p', 'pre', 'section', 'strong', 'table', 'tbody',
+          'td', 'th', 'thead', 'tr', 'ul', 'iframe'
+        ],
+        ALLOWED_ATTR: [
+          'href', 'src', 'srcset', 'alt', 'title', 'class', 'id', 'width',
+          'height', 'target'
+        ],
+        KEEP_CONTENT: true
+      });
+
+      this.content.innerHTML = clean;
+    } catch (e) {
+      // Graceful fallback if DOMPurify initialization fails
+      console.error('DOMPurify initialization failed:', e);
+      // Continue without sanitization in case of error
+    }
   }
 
   /**

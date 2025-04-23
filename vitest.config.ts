@@ -1,3 +1,4 @@
+// vitest.config.ts
 import { defineConfig } from 'vitest/config'
 import { resolve } from 'path'
 
@@ -16,7 +17,6 @@ export default defineConfig({
     alias: {
       'graby-ts-site-config': resolve(__dirname, './src/tests/mocks/site-config.mock.ts'),
       'fontoxpath': resolve(__dirname, './src/tests/mocks/fontoxpath.mock.ts'),
-      'dompurify': resolve(__dirname, './src/tests/mocks/dompurify.mock.ts'),
       '@mozilla/readability': resolve(__dirname, './src/tests/mocks/readability.mock.ts')
     }
   }
