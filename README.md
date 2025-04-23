@@ -15,7 +15,7 @@ npm install graby-ts
 ## Usage
 
 ```javascript
-import { Graby } from 'graby-ts';
+import { Graby } from 'graby-ts/node'; // or 'graby-ts/nativescript'
 
 // Create a Graby instance
 const graby = new Graby();

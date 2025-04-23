@@ -5,6 +5,23 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./node": {
+      "require": "./dist/index.node.js",
+      "import": "./dist/index.node.js",
+      "default": "./dist/index.node.js"
+    },
+    "./nativescript": {
+      "require": "./dist/index.nativescript.js",
+      "import": "./dist/index.nativescript.js",
+      "default": "./dist/index.nativescript.js"
+    }
+  },
   "files": [
     "dist"
   ],
@@ -32,7 +49,6 @@
     "fontoxpath": "^3.33.2",
     "graby-ts-site-config": "^1.1.1",
     "html-entities": "^2.6.0",
-    "isomorphic-fetch": "^3.0.0",
     "linkedom": "^0.18.9",
     "url-parse": "^1.5.10"
   },
@@ -52,5 +68,12 @@
     "ts-jest": "^29.3.2",
     "typescript": "^5.8.3",
     "vitest": "^3.1.2"
+  },
+  "peerDependencies": {
+    "isomorphic-fetch": "^3.0.0",
+    "@nativescript/core": "^8.0.0"
+  },
+  "optionalDependencies": {
+    "isomorphic-fetch": "^3.0.0"
   }
 }

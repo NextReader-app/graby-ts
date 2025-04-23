@@ -1,17 +1,19 @@
-import fetch from 'isomorphic-fetch';
-import URLParse from 'url-parse';
 import { HttpClientOptions, FetchOptions, HttpResponse } from './interfaces.js';
+import URLParse from 'url-parse';
+import { IHttpAdapter } from './HttpAdapterInterface.js';
+
+// Import getHttpAdapter from the appropriate entry point (will be resolved at runtime)
+declare function getHttpAdapter(): IHttpAdapter;
 
 /**
- * HTTP client for fetching web content with proper handling of redirects
- * and special content types
+ * HTTP client for fetching web content
  */
 class HttpClient {
   private options: Required<HttpClientOptions>;
+  private httpAdapter: IHttpAdapter | null = null;
 
   /**
    * Create a new HttpClient
-   * @param options - Client options
    */
   constructor(options: HttpClientOptions = {}) {
     this.options = {
@@ -21,21 +23,19 @@ class HttpClient {
       silent: false,
       ...options
     };
+
+    // Initialize adapter immediately
+    this.httpAdapter = getHttpAdapter();
   }
 
   /**
    * Fetch content from a URL
-   * @param url - URL to fetch
-   * @param options - Fetch options
-   * @returns - Response with content and metadata
    */
   async fetch(url: string, options: FetchOptions = {}): Promise<HttpResponse> {
     const { skipTypeCheck = false, headers = {} } = options;
-
-    // Parse URL for normalization
     const parsedUrl = new URLParse(url);
 
-    // Default headers - similar to browser behavior
+    // Setup headers
     const requestHeaders: Record<string, string> = {
       'User-Agent': this.getUserAgent(headers),
       'Referer': this.getReferer(headers),
@@ -45,8 +45,8 @@ class HttpClient {
     };
 
     try {
-      // Perform the request
-      const response = await fetch(parsedUrl.toString(), {
+      // Perform request through adapter
+      const response = await this.httpAdapter!.request(parsedUrl.toString(), {
         method: 'GET',
         headers: requestHeaders,
         redirect: 'follow'
@@ -58,9 +58,10 @@ class HttpClient {
       }
 
       // Get content type
-      const contentType = response.headers.get('content-type') || '';
+      const contentType = response.headers['content-type'] ||
+                         response.headers['Content-Type'] || '';
 
-      // Handle content types like PDF, images, etc.
+      // Handle special content types
       if (!skipTypeCheck &&
           !contentType.includes('text/html') &&
           !contentType.includes('application/xhtml+xml')) {
@@ -70,18 +71,18 @@ class HttpClient {
       // Get HTML content
       const html = await response.text();
 
+      // Process response URL
       let responseUrl = response.url;
-      // Remove trailing slash to match test expectations if needed
       if (responseUrl.endsWith('/') && !parsedUrl.toString().endsWith('/')) {
         responseUrl = responseUrl.slice(0, -1);
       }
 
       return {
-        url: responseUrl, // Final URL after redirects, without trailing slash
+        url: responseUrl,
         html,
         contentType,
         status: response.status,
-        headers: this.extractHeaders(response.headers)
+        headers: response.headers
       };
     } catch (error) {
       if (!this.options.silent) {
@@ -92,15 +93,10 @@ class HttpClient {
   }
 
   /**
-   * Handle special content types (non-HTML)
-   * @param response - Fetch response
-   * @param contentType - Content type header
-   * @returns - Processed response
+   * Handle special content types
    */
-  private async handleSpecialContentType(response: Response, contentType: string): Promise<HttpResponse> {
-    // Basic handling for now - will be expanded in future versions
+  private async handleSpecialContentType(response: any, contentType: string): Promise<HttpResponse> {
     let responseUrl = response.url;
-    // Remove trailing slash to match test expectations
     if (responseUrl.endsWith('/')) {
       responseUrl = responseUrl.slice(0, -1);
     }
@@ -110,28 +106,13 @@ class HttpClient {
       html: null,
       contentType,
       status: response.status,
-      headers: this.extractHeaders(response.headers),
-      specialContent: true // This is needed for tests to pass
+      headers: response.headers,
+      specialContent: true
     };
   }
 
   /**
-   * Extract headers from fetch Response headers object
-   * @param headers - Fetch response headers
-   * @returns - Plain object with headers
-   */
-  private extractHeaders(headers: Headers): Record<string, string> {
-    const result: Record<string, string> = {};
-    headers.forEach((value, key) => {
-      result[key] = value;
-    });
-    return result;
-  }
-
-  /**
-   * Get User-Agent header, prioritizing site config if available
-   * @param headers - Headers from site config
-   * @returns - User-Agent string to use
+   * Get User-Agent header
    */
   private getUserAgent(headers: Record<string, string>): string {
     if (headers['user-agent']) {
@@ -144,9 +125,7 @@ class HttpClient {
   }
 
   /**
-   * Get Referer header, prioritizing site config if available
-   * @param headers - Headers from site config
-   * @returns - Referer string to use
+   * Get Referer header
    */
   private getReferer(headers: Record<string, string>): string {
     if (headers['referer']) {
@@ -159,16 +138,11 @@ class HttpClient {
   }
 
   /**
-   * Get other accepted headers from site config
-   * @param headers - Headers from site config
-   * @returns - Object with accepted headers
+   * Get other accepted headers
    */
   private getAcceptedHeaders(headers: Record<string, string>): Record<string, string> {
     const acceptedHeaders: Record<string, string> = {};
 
-    // Only allow specific headers (matching PHP implementation)
-    // PHP accepts: user-agent, referer, cookie, accept
-    // User-agent and referer are handled separately
     if (headers['cookie']) {
       acceptedHeaders['Cookie'] = headers['cookie'];
     }
