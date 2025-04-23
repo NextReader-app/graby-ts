@@ -1,4 +1,4 @@
-import { parseHTML } from 'linkedom';
+import { parseHTML } from 'linkedom/worker';
 import { Readability } from '@mozilla/readability';
 import { evaluateXPathToNodes, Node as FontoxpathNode } from 'fontoxpath';
 import URLParse from 'url-parse';

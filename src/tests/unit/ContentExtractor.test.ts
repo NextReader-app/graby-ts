@@ -3,7 +3,7 @@ import ContentExtractor from '../../lib/ContentExtractor.js';
 import { MockSiteConfigManager } from '../mocks/siteconfig.mock.js';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { parseHTML } from 'linkedom';
+import { parseHTML } from 'linkedom/worker';
 
 // Helper to load test fixtures
 const loadFixture = (name: string): string => {
