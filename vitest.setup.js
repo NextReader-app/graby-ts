@@ -1,8 +1,12 @@
 // Vitest global setup
 import { vi, beforeEach, beforeAll, afterAll } from 'vitest';
+import { getHttpAdapter } from './src/index.node.js';
 
 // Setup ESM-friendly global variables
 globalThis.vi = vi;
+
+// Make getHttpAdapter globally available for tests
+globalThis.getHttpAdapter = getHttpAdapter;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -23,19 +27,6 @@ afterAll(() => {
   console.log = originalConsoleLog;
   console.error = originalConsoleError;
 });
-
-// Set up fetch mock
-global.fetch = vi.fn().mockImplementation(() => 
-  Promise.resolve({
-    status: 200,
-    url: 'https://example.com',
-    redirected: false,
-    headers: new Headers({
-      'content-type': 'text/html'
-    }),
-    text: () => Promise.resolve('<html><body>Test content</body></html>')
-  })
-);
 
 // Set up Headers mock
 global.Headers = class Headers {

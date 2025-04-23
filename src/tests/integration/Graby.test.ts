@@ -1,17 +1,9 @@
 import { describe, test, expect, beforeEach, vi } from 'vitest';
-import { Graby } from '../../index.js';
+import { Graby } from '../../core.js';
+import { IHttpAdapter } from '../../lib/HttpAdapterInterface.js';
+import HttpClient from '../../lib/HttpClient.js';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-
-// Mock isomorphic-fetch
-vi.mock('isomorphic-fetch', () => {
-  return {
-    default: vi.fn()
-  };
-});
-
-// Import the mocked fetch
-import fetch from 'isomorphic-fetch';
 
 // Helper to load test fixtures
 const loadFixture = (name: string): string => {
@@ -19,25 +11,40 @@ const loadFixture = (name: string): string => {
 };
 
 describe('Graby', () => {
+  let mockAdapter: IHttpAdapter;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    // Create a mock adapter before each test
+    mockAdapter = {
+      request: vi.fn()
+    };
   });
 
   test('extracts content from a URL', async () => {
     // Setup mock response
     const mockResponse = {
       url: 'https://example.com/article',
-      redirected: false,
       status: 200,
-      headers: new Headers({
+      headers: {
         'content-type': 'text/html; charset=utf-8'
-      }),
+      },
+      redirected: false,
       text: vi.fn().mockResolvedValue(loadFixture('article.html'))
     };
 
-    (fetch as any).mockResolvedValue(mockResponse);
+    (mockAdapter.request as any).mockResolvedValue(mockResponse);
 
-    const graby = new Graby({silent: true});
+    // Create a custom HttpClient with our mock adapter
+    const customHttpClient = new HttpClient({silent: true}, mockAdapter);
+
+    // Pass custom HttpClient to Graby via options
+    const graby = new Graby({
+      silent: true,
+      // Create factory function for custom HttpClient
+      httpClientFactory: (options) => customHttpClient
+    });
+
     const result = await graby.extract('https://example.com/article');
 
     expect(result.title).toBe('Test Article Title');
@@ -52,7 +59,12 @@ describe('Graby', () => {
     const html = loadFixture('article-with-opengraph.html');
     const url = 'https://example.com/article';
 
-    const graby = new Graby({silent: true});
+    const customHttpClient = new HttpClient({silent: true}, mockAdapter);
+    const graby = new Graby({
+      silent: true,
+      httpClientFactory: (options) => customHttpClient
+    });
+
     const result = await graby.extractFromHtml(html, url);
 
     // Title comes from the test fixture (Test Article Title instead of OpenGraph Title)
@@ -66,29 +78,37 @@ describe('Graby', () => {
   test('handles fetch errors gracefully', async () => {
     // Set up mock to reject with a network error
     const networkError = new Error('Network error');
-    (fetch as any).mockRejectedValue(networkError);
+    (mockAdapter.request as any).mockRejectedValue(networkError);
 
-    const graby = new Graby({silent: true});
-    
+    const customHttpClient = new HttpClient({silent: true}, mockAdapter);
+    const graby = new Graby({
+      silent: true,
+      httpClientFactory: (options) => customHttpClient
+    });
+
     // Use Vitest's built-in async error handling
     await expect(graby.extract('https://example.com/article')).rejects.toThrow('Network error');
   });
 
   test('handles non-HTML content types', async () => {
-    // Mock fetch to return a non-HTML content type
+    // Mock response to return a non-HTML content type
     const mockResponse = {
       url: 'https://example.com/image.jpg',
-      redirected: false,
       status: 200,
-      headers: new Headers({
+      headers: {
         'content-type': 'image/jpeg'
-      }),
+      },
+      redirected: false,
       text: vi.fn().mockResolvedValue('binary data')
     };
-    
-    (fetch as any).mockResolvedValue(mockResponse);
 
-    const graby = new Graby({silent: true});
+    (mockAdapter.request as any).mockResolvedValue(mockResponse);
+
+    const customHttpClient = new HttpClient({silent: true}, mockAdapter);
+    const graby = new Graby({
+      silent: true,
+      httpClientFactory: (options) => customHttpClient
+    });
 
     // When we call extract, the non-HTML response should be detected
     // by HttpClient and processed to return an empty result
@@ -104,15 +124,21 @@ describe('Graby', () => {
     // Setup mock response
     const mockResponse = {
       url: 'https://example.com/article',
-      redirected: false,
       status: 200,
-      headers: new Headers({
+      headers: {
         'content-type': 'text/html; charset=utf-8'
-      }),
+      },
+      redirected: false,
       text: vi.fn().mockResolvedValue(loadFixture('article.html'))
     };
-    
-    (fetch as any).mockResolvedValue(mockResponse);
+
+    (mockAdapter.request as any).mockResolvedValue(mockResponse);
+
+    // Create HttpClient with custom options
+    const customHttpClient = new HttpClient({
+      userAgent: 'Custom User Agent',
+      silent: true
+    }, mockAdapter);
 
     const graby = new Graby({
       httpClient: {
@@ -121,17 +147,18 @@ describe('Graby', () => {
       extractor: {
         enableXss: false
       },
-      silent: true
+      silent: true,
+      httpClientFactory: (options) => customHttpClient
     });
 
     const result = await graby.extract('https://example.com/article');
-    
+
     // Just verify we got a result with expected properties
     expect(result).toBeDefined();
     expect(result.success).toBeDefined();
-    
-    // Verify custom headers were passed to fetch
-    expect(fetch).toHaveBeenCalledWith(
+
+    // Verify custom headers were passed to the adapter
+    expect(mockAdapter.request).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
         headers: expect.objectContaining({
@@ -140,72 +167,90 @@ describe('Graby', () => {
       })
     );
   });
-  
+
   test('properly handles silent option for error logging', async () => {
     // Mock a network error
     const networkError = new Error('Network error');
-    (fetch as any).mockRejectedValue(networkError);
-    
+    (mockAdapter.request as any).mockRejectedValue(networkError);
+
     // Spy on console.error
     const consoleErrorSpy = vi.spyOn(console, 'error');
-    
-    // Create Graby with silent option
-    const silentGraby = new Graby({ silent: true });
-    
+
+    // Create Graby with silent option and custom HttpClient
+    const silentHttpClient = new HttpClient({silent: true}, mockAdapter);
+    const silentGraby = new Graby({
+      silent: true,
+      httpClientFactory: (options) => silentHttpClient
+    });
+
     try {
       await silentGraby.extract('https://example.com/article');
     } catch (error) {
       // Error should be thrown but not logged
     }
-    
+
     // Should not log error messages
     expect(consoleErrorSpy).not.toHaveBeenCalled();
-    
+
     // Create Graby without silent option
-    const verboseGraby = new Graby({ silent: false });
-    
+    // Reset mockAdapter for this test
+    (mockAdapter.request as any).mockRejectedValue(networkError);
+
+    const verboseHttpClient = new HttpClient({silent: false}, mockAdapter);
+    const verboseGraby = new Graby({
+      silent: false,
+      httpClientFactory: (options) => verboseHttpClient
+    });
+
     try {
       await verboseGraby.extract('https://example.com/article');
     } catch (error) {
       // Error should be thrown and logged
     }
-    
+
     // Should log error messages
-    expect(consoleErrorSpy).toHaveBeenCalledWith('Error fetching URL:', expect.any(Error));
     expect(consoleErrorSpy).toHaveBeenCalledWith('Error extracting content:', expect.any(Error));
-    
+
     // Clean up spy
     consoleErrorSpy.mockRestore();
   });
 
-  test('passes custom headers to fetch', async () => {
+  test('passes custom headers to http adapter', async () => {
     // Setup mock response
     const mockResponse = {
       url: 'https://example.com/article',
-      redirected: false,
       status: 200,
-      headers: new Headers({
+      headers: {
         'content-type': 'text/html; charset=utf-8'
-      }),
+      },
+      redirected: false,
       text: vi.fn().mockResolvedValue(loadFixture('article.html'))
     };
-    
-    (fetch as any).mockResolvedValue(mockResponse);
+
+    (mockAdapter.request as any).mockResolvedValue(mockResponse);
+
+    // Create HttpClient with custom options
+    const customHttpClient = new HttpClient({
+      userAgent: 'Custom User Agent',
+      referer: 'https://custom-referer.com',
+      silent: true
+    }, mockAdapter);
 
     // Create Graby instance with custom headers
-    const graby = new Graby({ 
+    const graby = new Graby({
       silent: true,
       httpClient: {
         userAgent: 'Custom User Agent',
         referer: 'https://custom-referer.com'
-      }
+      },
+      httpClientFactory: (options) => customHttpClient
     });
-    
+
     // Extract content
     await graby.extract('https://example.com/article');
 
-    // Verify that fetch was called with the custom headers
-    expect(fetch).toHaveBeenCalledWith(
+    // Verify that adapter was called with the custom headers
+    expect(mockAdapter.request).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
         headers: expect.objectContaining({

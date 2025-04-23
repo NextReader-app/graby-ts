@@ -14,8 +14,10 @@ class HttpClient {
 
   /**
    * Create a new HttpClient
+   * @param options - Client options
+   * @param customAdapter - Optional adapter for testing purposes
    */
-  constructor(options: HttpClientOptions = {}) {
+  constructor(options: HttpClientOptions = {}, customAdapter?: IHttpAdapter) {
     this.options = {
       userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       referer: 'https://www.google.com/',
@@ -24,8 +26,8 @@ class HttpClient {
       ...options
     };
 
-    // Initialize adapter immediately
-    this.httpAdapter = getHttpAdapter();
+    // Use custom adapter if provided (for testing) or get default adapter
+    this.httpAdapter = customAdapter || getHttpAdapter();
   }
 
   /**

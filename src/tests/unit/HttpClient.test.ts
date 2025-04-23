@@ -1,46 +1,44 @@
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 import HttpClient from '../../lib/HttpClient.js';
-
-// Mock isomorphic-fetch module
-vi.mock('isomorphic-fetch', () => {
-  return {
-    default: vi.fn()
-  };
-});
-
-// Import the mocked fetch
-import fetch from 'isomorphic-fetch';
+import { IHttpAdapter } from '../../lib/HttpAdapterInterface.js';
 
 describe('HttpClient', () => {
+  let mockAdapter: IHttpAdapter;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    // Create a mock adapter before each test
+    mockAdapter = {
+      request: vi.fn()
+    };
   });
 
   test('fetches content with default headers', async () => {
-    // Mock fetch response
+    // Mock adapter response
     const mockResponse = {
       url: 'https://example.com',
-      redirected: false,
       status: 200,
-      headers: new Headers({
+      headers: {
         'content-type': 'text/html; charset=utf-8'
-      }),
+      },
+      redirected: false,
       text: vi.fn().mockResolvedValue('<html><body>Test content</body></html>')
     };
-    
-    (fetch as any).mockResolvedValue(mockResponse);
 
-    const client = new HttpClient({silent: true});
+    (mockAdapter.request as any).mockResolvedValue(mockResponse);
+
+    // Pass the mock adapter as the second argument
+    const client = new HttpClient({silent: true}, mockAdapter);
     const response = await client.fetch('https://example.com');
 
     // Verify the response has expected values
     expect(response.url).toMatch(/^https:\/\/example\.com\/?$/);
     expect(response.html).toBe('<html><body>Test content</body></html>');
     expect(response.contentType).toContain('text/html');
-    
-    // Verify fetch was called with expected URL
-    expect(fetch).toHaveBeenCalledTimes(1);
-    expect(fetch).toHaveBeenCalledWith(
+
+    // Verify adapter.request was called with expected URL
+    expect(mockAdapter.request).toHaveBeenCalledTimes(1);
+    expect(mockAdapter.request).toHaveBeenCalledWith(
       expect.stringMatching(/https:\/\/example\.com/),
       expect.objectContaining({
         method: 'GET',
@@ -51,20 +49,20 @@ describe('HttpClient', () => {
   });
 
   test('handles redirects', async () => {
-    // Mock fetch response for redirect
+    // Mock adapter response for redirect
     const mockResponse = {
       url: 'https://example.com/redirected',
-      redirected: true,
       status: 200,
-      headers: new Headers({
+      headers: {
         'content-type': 'text/html; charset=utf-8'
-      }),
+      },
+      redirected: true,
       text: vi.fn().mockResolvedValue('<html><body>Redirected content</body></html>')
     };
-    
-    (fetch as any).mockResolvedValue(mockResponse);
 
-    const client = new HttpClient({silent: true});
+    (mockAdapter.request as any).mockResolvedValue(mockResponse);
+
+    const client = new HttpClient({silent: true}, mockAdapter);
     const response = await client.fetch('https://example.com');
 
     // Verify redirect was handled correctly
@@ -73,20 +71,20 @@ describe('HttpClient', () => {
   });
 
   test('handles non-HTML content types', async () => {
-    // Mock fetch response for non-HTML content
+    // Mock adapter response for non-HTML content
     const mockResponse = {
       url: 'https://example.com/image.jpg',
-      redirected: false,
       status: 200,
-      headers: new Headers({
+      headers: {
         'content-type': 'image/jpeg'
-      }),
+      },
+      redirected: false,
       text: vi.fn().mockResolvedValue('binary data')
     };
-    
-    (fetch as any).mockResolvedValue(mockResponse);
 
-    const client = new HttpClient({silent: true});
+    (mockAdapter.request as any).mockResolvedValue(mockResponse);
+
+    const client = new HttpClient({silent: true}, mockAdapter);
     const response = await client.fetch('https://example.com/image.jpg');
 
     // Verify non-HTML content handling
@@ -96,71 +94,71 @@ describe('HttpClient', () => {
   });
 
   test('handles fetch errors', async () => {
-    // Mock fetch to reject with an error
+    // Mock adapter to reject with an error
     const mockError = new Error('Network error');
-    (fetch as any).mockRejectedValue(mockError);
+    (mockAdapter.request as any).mockRejectedValue(mockError);
 
-    const client = new HttpClient({silent: true});
+    const client = new HttpClient({silent: true}, mockAdapter);
 
     // Verify error is properly propagated
     await expect(client.fetch('https://example.com')).rejects.toThrow('Network error');
   });
-  
+
   test('handles errors with silent option', async () => {
-    // Mock fetch to reject with an error
+    // Mock adapter to reject with an error
     const mockError = new Error('Network error');
-    (fetch as any).mockRejectedValue(mockError);
-    
+    (mockAdapter.request as any).mockRejectedValue(mockError);
+
     // Spy on console.error
     const consoleErrorSpy = vi.spyOn(console, 'error');
-    
+
     // Client with silent option
-    const silentClient = new HttpClient({ silent: true });
-    
+    const silentClient = new HttpClient({ silent: true }, mockAdapter);
+
     try {
       await silentClient.fetch('https://example.com');
     } catch (error) {
       // Error should be thrown but no console output
     }
-    
+
     // Should not log error message
     expect(consoleErrorSpy).not.toHaveBeenCalled();
-    
+
     // Client without silent option
-    const verboseClient = new HttpClient({ silent: false });
-    
+    const verboseClient = new HttpClient({ silent: false }, mockAdapter);
+
     try {
       await verboseClient.fetch('https://example.com');
     } catch (error) {
       // Error should be thrown and logged
     }
-    
+
     // Should log error message
     expect(consoleErrorSpy).toHaveBeenCalledWith('Error fetching URL:', expect.any(Error));
-    
+
     // Clean up spy
     consoleErrorSpy.mockRestore();
   });
 
   test('customizes headers via options', async () => {
-    // Mock fetch response
+    // Mock adapter response
     const mockResponse = {
       url: 'https://example.com',
-      redirected: false,
       status: 200,
-      headers: new Headers({
+      headers: {
         'content-type': 'text/html; charset=utf-8'
-      }),
+      },
+      redirected: false,
       text: vi.fn().mockResolvedValue('<html><body>Test content</body></html>')
     };
-    
-    (fetch as any).mockResolvedValue(mockResponse);
+
+    (mockAdapter.request as any).mockResolvedValue(mockResponse);
 
     const client = new HttpClient({
       userAgent: 'Custom User Agent',
       referer: 'https://custom-referer.com',
       silent: true
-    });
+    }, mockAdapter);
 
     await client.fetch('https://example.com', {
       headers: {
@@ -169,9 +167,9 @@ describe('HttpClient', () => {
         'X-Custom-Header': 'Custom Value' // Should be ignored
       }
     });
-    
-    // Verify fetch was called with custom headers (only the supported ones)
-    expect(fetch).toHaveBeenCalledWith(
+
+    // Verify request was called with custom headers (only the supported ones)
+    expect(mockAdapter.request).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
         headers: expect.objectContaining({
@@ -182,63 +180,63 @@ describe('HttpClient', () => {
         })
       })
     );
-    
+
     // Verify unsupported headers were not included
-    const fetchCall = (fetch as any).mock.calls[0][1];
-    expect(fetchCall.headers).not.toHaveProperty('X-Custom-Header');
+    const requestCall = (mockAdapter.request as any).mock.calls[0][1];
+    expect(requestCall.headers).not.toHaveProperty('X-Custom-Header');
   });
-  
+
   test('handles redirects with silent option', async () => {
-    // Mock fetch response with redirect
+    // Mock adapter response with redirect
     const mockResponse = {
       url: 'https://example.com/redirected',
-      redirected: true,
       status: 200,
-      headers: new Headers({
+      headers: {
         'content-type': 'text/html; charset=utf-8'
-      }),
+      },
+      redirected: true,
       text: vi.fn().mockResolvedValue('<html><body>Redirected content</body></html>')
     };
-    
-    (fetch as any).mockResolvedValue(mockResponse);
-    
+
+    (mockAdapter.request as any).mockResolvedValue(mockResponse);
+
     // Spy on console.log
     const consoleLogSpy = vi.spyOn(console, 'log');
-    
+
     // Client with silent option
-    const silentClient = new HttpClient({ silent: true });
+    const silentClient = new HttpClient({ silent: true }, mockAdapter);
     await silentClient.fetch('https://example.com');
-    
+
     // Should not log redirect message
     expect(consoleLogSpy).not.toHaveBeenCalled();
-    
+
     // Client without silent option
-    const verboseClient = new HttpClient({ silent: false });
+    const verboseClient = new HttpClient({ silent: false }, mockAdapter);
     await verboseClient.fetch('https://example.com');
-    
+
     // Should log redirect message
     expect(consoleLogSpy).toHaveBeenCalledWith('Redirected to: https://example.com/redirected');
-    
+
     // Clean up spy
     consoleLogSpy.mockRestore();
   });
 
   test('handles site-specific HTTP headers', async () => {
-    // Mock fetch response
+    // Mock adapter response
     const mockResponse = {
       url: 'https://example.com',
-      redirected: false,
       status: 200,
-      headers: new Headers({
+      headers: {
         'content-type': 'text/html; charset=utf-8'
-      }),
+      },
+      redirected: false,
       text: vi.fn().mockResolvedValue('<html><body>Test content</body></html>')
     };
-    
-    (fetch as any).mockResolvedValue(mockResponse);
 
-    const client = new HttpClient({ silent: true });
-    
+    (mockAdapter.request as any).mockResolvedValue(mockResponse);
+
+    const client = new HttpClient({ silent: true }, mockAdapter);
+
     // Test with site-specific headers (only the supported ones)
     await client.fetch('https://example.com', {
       headers: {
@@ -250,9 +248,9 @@ describe('HttpClient', () => {
         'Authorization': 'Bearer token123'     // Should be ignored
       }
     });
-    
-    // Verify fetch was called with only the supported headers
-    expect(fetch).toHaveBeenCalledWith(
+
+    // Verify request was called with only the supported headers
+    expect(mockAdapter.request).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
         headers: expect.objectContaining({
@@ -263,10 +261,10 @@ describe('HttpClient', () => {
         })
       })
     );
-    
+
     // Verify unsupported headers were not included
-    const fetchCall = (fetch as any).mock.calls[0][1];
-    expect(fetchCall.headers).not.toHaveProperty('X-API-Key');
-    expect(fetchCall.headers).not.toHaveProperty('Authorization');
+    const requestCall = (mockAdapter.request as any).mock.calls[0][1];
+    expect(requestCall.headers).not.toHaveProperty('X-API-Key');
+    expect(requestCall.headers).not.toHaveProperty('Authorization');
   });
 });

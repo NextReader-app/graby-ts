@@ -1,3 +1,5 @@
+import HttpClient from "./HttpClient.js";
+
 /**
  * HTTP response interface
  */
@@ -96,4 +98,5 @@ export interface GrabyOptions {
   silent?: boolean;
   multipage?: boolean; // Control for multi-page support
   multipageLimit?: number; // Maximum number of pages to process
+  httpClientFactory?: ((options: HttpClientOptions) => HttpClient) | null; // An option for testing
 }

@@ -33,6 +33,7 @@ class Graby {
       silent: false,
       multipage: true, // Multi-page support enabled by default
       multipageLimit: 10, // Maximum number of pages to process
+      httpClientFactory: null,
       ...options
     };
 
@@ -41,7 +42,12 @@ class Graby {
       ...this.options.httpClient,
       silent: this.options.silent
     };
-    this.httpClient = new HttpClient(httpClientOptions);
+    
+    // Use factory function if provided (for testing), otherwise create a new instance
+    this.httpClient = this.options.httpClientFactory 
+      ? this.options.httpClientFactory(httpClientOptions)
+      : new HttpClient(httpClientOptions);
+      
     this.siteConfigManager = new SiteConfigManager();
     this.extractor = new ContentExtractor(this.options.extractor, this.siteConfigManager);
   }
