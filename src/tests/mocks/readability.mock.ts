@@ -6,11 +6,11 @@ export class Readability {
 
   parse() {
     return {
-      title: 'Readability Title',
-      content: '<div><p>Readability content</p></div>',
-      textContent: 'Readability content plain text',
-      length: 20,
-      byline: 'Readability Author',
+      title: 'Test Article Title',
+      content: '<div><p>This is the first paragraph of the article.</p></div>',
+      textContent: 'This is the first paragraph of the article.',
+      length: 42,
+      byline: 'Jane Doe',
       publishedTime: '2023-08-15T10:00:00Z'
     };
   }
