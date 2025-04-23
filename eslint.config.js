@@ -1,11 +1,11 @@
-const { FlatCompat } = require('@eslint/eslintrc');
-const js = require('@eslint/js');
-const tsParser = require('@typescript-eslint/parser');
-const tsPlugin = require('@typescript-eslint/eslint-plugin');
+import { FlatCompat } from '@eslint/eslintrc';
+import js from '@eslint/js';
+import tsParser from '@typescript-eslint/parser';
+import tsPlugin from '@typescript-eslint/eslint-plugin';
 
 const compat = new FlatCompat();
 
-module.exports = [
+export default [
   js.configs.recommended,
   ...compat.extends('plugin:@typescript-eslint/recommended'),
   {
