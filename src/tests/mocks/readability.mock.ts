@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 // Mock for @mozilla/readability
 export class Readability {
   constructor(document: Document, options?: any) {}
@@ -18,6 +20,6 @@ export class Readability {
 export const __JSDOMParser__ = {
   prototype: {
     // Add required properties for Readability
-    parseFromString: jest.fn()
+    parseFromString: vi.fn()
   }
 };

@@ -1,3 +1,4 @@
+import { describe, test, expect, beforeEach, vi } from 'vitest';
 import ContentExtractor from '../../lib/ContentExtractor';
 import { MockSiteConfigManager } from '../mocks/siteconfig.mock';
 import { readFileSync } from 'fs';
@@ -198,7 +199,7 @@ describe('ContentExtractor', () => {
     
     // Mock console.warn
     const originalWarn = console.warn;
-    const mockWarn = jest.fn();
+    const mockWarn = vi.fn();
     console.warn = mockWarn;
     
     // Create a mock site config with a disallowed tag

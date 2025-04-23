@@ -1,6 +1,11 @@
-// Jest global setup
+// Vitest global setup
+import { vi, beforeEach, beforeAll, afterAll } from 'vitest';
+
+// Setup ESM-friendly global variables
+globalThis.vi = vi;
+
 beforeEach(() => {
-  jest.clearAllMocks();
+  vi.clearAllMocks();
 });
 
 // Silence console output during test runs unless specifically testing console behavior
@@ -9,8 +14,8 @@ const originalConsoleError = console.error;
 
 beforeAll(() => {
   // Mute console output during tests
-  console.log = jest.fn();
-  console.error = jest.fn();
+  console.log = vi.fn();
+  console.error = vi.fn();
 });
 
 afterAll(() => {
@@ -20,7 +25,7 @@ afterAll(() => {
 });
 
 // Set up fetch mock
-global.fetch = jest.fn().mockImplementation(() => 
+global.fetch = vi.fn().mockImplementation(() => 
   Promise.resolve({
     status: 200,
     url: 'https://example.com',

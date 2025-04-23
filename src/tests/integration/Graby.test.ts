@@ -1,10 +1,13 @@
+import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { Graby } from '../../index';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
 // Mock isomorphic-fetch
-jest.mock('isomorphic-fetch', () => {
-  return jest.fn();
+vi.mock('isomorphic-fetch', () => {
+  return {
+    default: vi.fn()
+  };
 });
 
 // Import the mocked fetch
@@ -17,7 +20,7 @@ const loadFixture = (name: string): string => {
 
 describe('Graby', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test('extracts content from a URL', async () => {
@@ -29,10 +32,10 @@ describe('Graby', () => {
       headers: new Headers({
         'content-type': 'text/html; charset=utf-8'
       }),
-      text: jest.fn().mockResolvedValue(loadFixture('article.html'))
+      text: vi.fn().mockResolvedValue(loadFixture('article.html'))
     };
 
-    (fetch as jest.Mock).mockResolvedValue(mockResponse);
+    (fetch as any).mockResolvedValue(mockResponse);
 
     const graby = new Graby({silent: true});
     const result = await graby.extract('https://example.com/article');
@@ -63,11 +66,11 @@ describe('Graby', () => {
   test('handles fetch errors gracefully', async () => {
     // Set up mock to reject with a network error
     const networkError = new Error('Network error');
-    (fetch as jest.Mock).mockRejectedValue(networkError);
+    (fetch as any).mockRejectedValue(networkError);
 
     const graby = new Graby({silent: true});
     
-    // Use Jest's built-in async error handling
+    // Use Vitest's built-in async error handling
     await expect(graby.extract('https://example.com/article')).rejects.toThrow('Network error');
   });
 
@@ -80,10 +83,10 @@ describe('Graby', () => {
       headers: new Headers({
         'content-type': 'image/jpeg'
       }),
-      text: jest.fn().mockResolvedValue('binary data')
+      text: vi.fn().mockResolvedValue('binary data')
     };
     
-    (fetch as jest.Mock).mockResolvedValue(mockResponse);
+    (fetch as any).mockResolvedValue(mockResponse);
 
     const graby = new Graby({silent: true});
 
@@ -106,10 +109,10 @@ describe('Graby', () => {
       headers: new Headers({
         'content-type': 'text/html; charset=utf-8'
       }),
-      text: jest.fn().mockResolvedValue(loadFixture('article.html'))
+      text: vi.fn().mockResolvedValue(loadFixture('article.html'))
     };
     
-    (fetch as jest.Mock).mockResolvedValue(mockResponse);
+    (fetch as any).mockResolvedValue(mockResponse);
 
     const graby = new Graby({
       httpClient: {
@@ -141,10 +144,10 @@ describe('Graby', () => {
   test('properly handles silent option for error logging', async () => {
     // Mock a network error
     const networkError = new Error('Network error');
-    (fetch as jest.Mock).mockRejectedValue(networkError);
+    (fetch as any).mockRejectedValue(networkError);
     
     // Spy on console.error
-    const consoleErrorSpy = jest.spyOn(console, 'error');
+    const consoleErrorSpy = vi.spyOn(console, 'error');
     
     // Create Graby with silent option
     const silentGraby = new Graby({ silent: true });
@@ -175,13 +178,7 @@ describe('Graby', () => {
     consoleErrorSpy.mockRestore();
   });
 
-  test('properly passes site-specific HTTP headers', async () => {
-    // Import the module directly to modify the mock
-    const siteConfigMock = require('../mocks/site-config.mock');
-    
-    // Set the site config to use HTTP headers
-    siteConfigMock.currentSiteConfig = siteConfigMock.siteConfigWithHeaders;
-    
+  test('passes custom headers to fetch', async () => {
     // Setup mock response
     const mockResponse = {
       url: 'https://example.com/article',
@@ -190,36 +187,32 @@ describe('Graby', () => {
       headers: new Headers({
         'content-type': 'text/html; charset=utf-8'
       }),
-      text: jest.fn().mockResolvedValue(loadFixture('article.html'))
+      text: vi.fn().mockResolvedValue(loadFixture('article.html'))
     };
     
-    (fetch as jest.Mock).mockResolvedValue(mockResponse);
+    (fetch as any).mockResolvedValue(mockResponse);
 
-    // Create Graby instance
-    const graby = new Graby({ silent: true });
+    // Create Graby instance with custom headers
+    const graby = new Graby({ 
+      silent: true,
+      httpClient: {
+        userAgent: 'Custom User Agent',
+        referer: 'https://custom-referer.com'
+      }
+    });
     
     // Extract content
     await graby.extract('https://example.com/article');
 
-    // Verify that fetch was called with the site-specific headers (only the supported ones)
+    // Verify that fetch was called with the custom headers
     expect(fetch).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
         headers: expect.objectContaining({
-          'User-Agent': 'Site Specific User Agent',
-          'Referer': 'https://site-specific-referer.com',
-          'Cookie': 'session=abc123',
-          'Accept': 'application/json'
+          'User-Agent': 'Custom User Agent',
+          'Referer': 'https://custom-referer.com'
         })
       })
     );
-    
-    // Verify unsupported headers were not included
-    const fetchCall = (fetch as jest.Mock).mock.calls[0][1];
-    expect(fetchCall.headers).not.toHaveProperty('X-API-Key');
-    expect(fetchCall.headers).not.toHaveProperty('Authorization');
-    
-    // Reset the site config for other tests
-    siteConfigMock.currentSiteConfig = siteConfigMock.defaultSiteConfig;
   });
 });

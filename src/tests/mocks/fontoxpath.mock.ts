@@ -1,5 +1,7 @@
+import { vi } from 'vitest';
+
 // Mock for fontoxpath
-export const evaluateXPathToNodes = jest.fn().mockImplementation((xpath: string) => {
+export const evaluateXPathToNodes = vi.fn().mockImplementation((xpath: string) => {
   if (xpath.includes('title')) {
     return [{ 
       textContent: 'Test Article Title',
@@ -8,7 +10,7 @@ export const evaluateXPathToNodes = jest.fn().mockImplementation((xpath: string)
       getAttribute: (attr: string): string => attr === 'href' ? '/article/page2' : 'test',
       cloneNode: (): any => ({ textContent: 'Test Article Title Clone' }),
       parentNode: {
-        removeChild: jest.fn()
+        removeChild: vi.fn()
       }
     }];
   } else if (xpath.includes('body')) {
@@ -19,7 +21,7 @@ export const evaluateXPathToNodes = jest.fn().mockImplementation((xpath: string)
       getAttribute: (): string => 'test',
       cloneNode: (): any => ({ textContent: 'Content Clone', innerHTML: '<p>This is the first paragraph of the article.</p>' }),
       parentNode: {
-        removeChild: jest.fn()
+        removeChild: vi.fn()
       }
     }];
   } else if (xpath.includes('next_page') || xpath.includes('a[@class="next-page"]')) {
@@ -30,7 +32,7 @@ export const evaluateXPathToNodes = jest.fn().mockImplementation((xpath: string)
       getAttribute: (attr: string): string | null => attr === 'href' ? '/article/page2' : null,
       cloneNode: (): any => ({ textContent: 'Next Page Clone' }),
       parentNode: {
-        removeChild: jest.fn()
+        removeChild: vi.fn()
       }
     }];
   } else if (xpath.includes('native_ad') || xpath.includes('sponsored')) {
@@ -41,7 +43,7 @@ export const evaluateXPathToNodes = jest.fn().mockImplementation((xpath: string)
       getAttribute: (): string => 'test',
       cloneNode: (): any => ({ textContent: 'Native Ad Clone' }),
       parentNode: {
-        removeChild: jest.fn()
+        removeChild: vi.fn()
       }
     }];
   } else {
@@ -52,7 +54,7 @@ export const evaluateXPathToNodes = jest.fn().mockImplementation((xpath: string)
       getAttribute: (): string => 'test',
       cloneNode: (): any => ({ textContent: 'Default Clone' }),
       parentNode: {
-        removeChild: jest.fn()
+        removeChild: vi.fn()
       }
     }];
   }

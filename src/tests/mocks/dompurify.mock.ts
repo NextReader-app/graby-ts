@@ -1,6 +1,8 @@
+import { vi } from 'vitest';
+
 // Mock for DOMPurify
 const DOMPurify = {
-  sanitize: jest.fn().mockImplementation((html, options) => {
+  sanitize: vi.fn().mockImplementation((html, options) => {
     return html; // Simply return the input HTML
   })
 };

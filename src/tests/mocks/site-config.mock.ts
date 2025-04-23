@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 // Default site config for tests
 export const defaultSiteConfig = {
   title: ['.//title'],
@@ -55,4 +57,4 @@ const siteConfigManager = new SiteConfigManager();
 export default siteConfigManager;
 
 // Also export the parsing function
-export const parseConfigFile = jest.fn();
+export const parseConfigFile = vi.fn();

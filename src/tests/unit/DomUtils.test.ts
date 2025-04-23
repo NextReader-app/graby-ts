@@ -1,3 +1,4 @@
+import { describe, test, expect, vi } from 'vitest';
 import DomUtils from '../../lib/DomUtils';
 import URLParse from 'url-parse';
 
@@ -5,18 +6,18 @@ describe('DomUtils', () => {
   test('makeUrlsAbsolute converts relative URLs to absolute', () => {
     // Create mock element with query results
     const mockLinks = [
-      { getAttribute: jest.fn().mockReturnValue('/relative-link'), setAttribute: jest.fn() },
-      { getAttribute: jest.fn().mockReturnValue('https://absolute-link.com'), setAttribute: jest.fn() },
-      { getAttribute: jest.fn().mockReturnValue('#'), setAttribute: jest.fn() }
+      { getAttribute: vi.fn().mockReturnValue('/relative-link'), setAttribute: vi.fn() },
+      { getAttribute: vi.fn().mockReturnValue('https://absolute-link.com'), setAttribute: vi.fn() },
+      { getAttribute: vi.fn().mockReturnValue('#'), setAttribute: vi.fn() }
     ];
     
     const mockImages = [
-      { getAttribute: jest.fn().mockReturnValue('/relative-image.jpg'), setAttribute: jest.fn() },
-      { getAttribute: jest.fn().mockReturnValue('https://absolute-image.com/img.jpg'), setAttribute: jest.fn() }
+      { getAttribute: vi.fn().mockReturnValue('/relative-image.jpg'), setAttribute: vi.fn() },
+      { getAttribute: vi.fn().mockReturnValue('https://absolute-image.com/img.jpg'), setAttribute: vi.fn() }
     ];
     
     const mockDiv = {
-      querySelectorAll: jest.fn().mockImplementation(selector => {
+      querySelectorAll: vi.fn().mockImplementation(selector => {
         if (selector === 'a') return mockLinks;
         if (selector === 'img') return mockImages;
         return [];
@@ -54,40 +55,40 @@ describe('DomUtils', () => {
     // Create mock images with various lazy-loading attributes
     const mockImages = [
       { 
-        getAttribute: jest.fn().mockImplementation(attr => {
+        getAttribute: vi.fn().mockImplementation(attr => {
           if (attr === 'src') return '/normal-image.jpg';
           return null;
         }),
-        setAttribute: jest.fn(),
-        hasAttribute: jest.fn().mockReturnValue(false),
-        removeAttribute: jest.fn()
+        setAttribute: vi.fn(),
+        hasAttribute: vi.fn().mockReturnValue(false),
+        removeAttribute: vi.fn()
       },
       { 
-        getAttribute: jest.fn().mockImplementation(attr => {
+        getAttribute: vi.fn().mockImplementation(attr => {
           if (attr === 'src') return '/lazy.jpg';
           if (attr === 'data-src') return '/real-image.jpg';
           return null;
         }),
-        setAttribute: jest.fn(),
-        hasAttribute: jest.fn().mockImplementation(attr => attr === 'data-src'),
-        removeAttribute: jest.fn()
+        setAttribute: vi.fn(),
+        hasAttribute: vi.fn().mockImplementation(attr => attr === 'data-src'),
+        removeAttribute: vi.fn()
       },
       { 
-        getAttribute: jest.fn().mockImplementation(attr => {
+        getAttribute: vi.fn().mockImplementation(attr => {
           if (attr === 'src') return 'data:image/gif;base64,R0lGOD';
           if (attr === 'data-original') return 'https://example.com/lazy-load.jpg';
           return null;
         }),
-        setAttribute: jest.fn(),
-        hasAttribute: jest.fn().mockImplementation(attr => {
+        setAttribute: vi.fn(),
+        hasAttribute: vi.fn().mockImplementation(attr => {
           return attr === 'data-original';
         }),
-        removeAttribute: jest.fn()
+        removeAttribute: vi.fn()
       }
     ];
     
     const mockDiv = {
-      querySelectorAll: jest.fn().mockReturnValue(mockImages)
+      querySelectorAll: vi.fn().mockReturnValue(mockImages)
     };
     
     // Call the function under test

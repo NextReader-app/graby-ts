@@ -1,8 +1,11 @@
+import { describe, test, expect, beforeEach, vi } from 'vitest';
 import HttpClient from '../../lib/HttpClient';
 
 // Mock isomorphic-fetch module
-jest.mock('isomorphic-fetch', () => {
-  return jest.fn();
+vi.mock('isomorphic-fetch', () => {
+  return {
+    default: vi.fn()
+  };
 });
 
 // Import the mocked fetch
@@ -10,7 +13,7 @@ import fetch from 'isomorphic-fetch';
 
 describe('HttpClient', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test('fetches content with default headers', async () => {
@@ -22,10 +25,10 @@ describe('HttpClient', () => {
       headers: new Headers({
         'content-type': 'text/html; charset=utf-8'
       }),
-      text: jest.fn().mockResolvedValue('<html><body>Test content</body></html>')
+      text: vi.fn().mockResolvedValue('<html><body>Test content</body></html>')
     };
     
-    (fetch as jest.Mock).mockResolvedValue(mockResponse);
+    (fetch as any).mockResolvedValue(mockResponse);
 
     const client = new HttpClient({silent: true});
     const response = await client.fetch('https://example.com');
@@ -56,10 +59,10 @@ describe('HttpClient', () => {
       headers: new Headers({
         'content-type': 'text/html; charset=utf-8'
       }),
-      text: jest.fn().mockResolvedValue('<html><body>Redirected content</body></html>')
+      text: vi.fn().mockResolvedValue('<html><body>Redirected content</body></html>')
     };
     
-    (fetch as jest.Mock).mockResolvedValue(mockResponse);
+    (fetch as any).mockResolvedValue(mockResponse);
 
     const client = new HttpClient({silent: true});
     const response = await client.fetch('https://example.com');
@@ -78,10 +81,10 @@ describe('HttpClient', () => {
       headers: new Headers({
         'content-type': 'image/jpeg'
       }),
-      text: jest.fn().mockResolvedValue('binary data')
+      text: vi.fn().mockResolvedValue('binary data')
     };
     
-    (fetch as jest.Mock).mockResolvedValue(mockResponse);
+    (fetch as any).mockResolvedValue(mockResponse);
 
     const client = new HttpClient({silent: true});
     const response = await client.fetch('https://example.com/image.jpg');
@@ -95,7 +98,7 @@ describe('HttpClient', () => {
   test('handles fetch errors', async () => {
     // Mock fetch to reject with an error
     const mockError = new Error('Network error');
-    (fetch as jest.Mock).mockRejectedValue(mockError);
+    (fetch as any).mockRejectedValue(mockError);
 
     const client = new HttpClient({silent: true});
 
@@ -106,10 +109,10 @@ describe('HttpClient', () => {
   test('handles errors with silent option', async () => {
     // Mock fetch to reject with an error
     const mockError = new Error('Network error');
-    (fetch as jest.Mock).mockRejectedValue(mockError);
+    (fetch as any).mockRejectedValue(mockError);
     
     // Spy on console.error
-    const consoleErrorSpy = jest.spyOn(console, 'error');
+    const consoleErrorSpy = vi.spyOn(console, 'error');
     
     // Client with silent option
     const silentClient = new HttpClient({ silent: true });
@@ -148,10 +151,10 @@ describe('HttpClient', () => {
       headers: new Headers({
         'content-type': 'text/html; charset=utf-8'
       }),
-      text: jest.fn().mockResolvedValue('<html><body>Test content</body></html>')
+      text: vi.fn().mockResolvedValue('<html><body>Test content</body></html>')
     };
     
-    (fetch as jest.Mock).mockResolvedValue(mockResponse);
+    (fetch as any).mockResolvedValue(mockResponse);
 
     const client = new HttpClient({
       userAgent: 'Custom User Agent',
@@ -181,7 +184,7 @@ describe('HttpClient', () => {
     );
     
     // Verify unsupported headers were not included
-    const fetchCall = (fetch as jest.Mock).mock.calls[0][1];
+    const fetchCall = (fetch as any).mock.calls[0][1];
     expect(fetchCall.headers).not.toHaveProperty('X-Custom-Header');
   });
   
@@ -194,13 +197,13 @@ describe('HttpClient', () => {
       headers: new Headers({
         'content-type': 'text/html; charset=utf-8'
       }),
-      text: jest.fn().mockResolvedValue('<html><body>Redirected content</body></html>')
+      text: vi.fn().mockResolvedValue('<html><body>Redirected content</body></html>')
     };
     
-    (fetch as jest.Mock).mockResolvedValue(mockResponse);
+    (fetch as any).mockResolvedValue(mockResponse);
     
     // Spy on console.log
-    const consoleLogSpy = jest.spyOn(console, 'log');
+    const consoleLogSpy = vi.spyOn(console, 'log');
     
     // Client with silent option
     const silentClient = new HttpClient({ silent: true });
@@ -229,10 +232,10 @@ describe('HttpClient', () => {
       headers: new Headers({
         'content-type': 'text/html; charset=utf-8'
       }),
-      text: jest.fn().mockResolvedValue('<html><body>Test content</body></html>')
+      text: vi.fn().mockResolvedValue('<html><body>Test content</body></html>')
     };
     
-    (fetch as jest.Mock).mockResolvedValue(mockResponse);
+    (fetch as any).mockResolvedValue(mockResponse);
 
     const client = new HttpClient({ silent: true });
     
@@ -262,7 +265,7 @@ describe('HttpClient', () => {
     );
     
     // Verify unsupported headers were not included
-    const fetchCall = (fetch as jest.Mock).mock.calls[0][1];
+    const fetchCall = (fetch as any).mock.calls[0][1];
     expect(fetchCall.headers).not.toHaveProperty('X-API-Key');
     expect(fetchCall.headers).not.toHaveProperty('Authorization');
   });
