@@ -143,9 +143,31 @@ class ContentExtractor {
    * @param url - URL of the page
    */
   private prepareDocumentForReadability(document: Document, url: string): void {
-    // Set document properties needed by Readability
-    (document as any).documentURI = url;
-    (document as any).baseURI = url;
+    // Set baseURI if not present (respects existing <base> tag if present)
+    if (!document.baseURI) {
+      // Create clean URL for baseURI (without hash fragment as per spec)
+      const parsedUrl = new URLParse(url);
+      parsedUrl.set('hash', '');
+      const cleanBaseUrl = parsedUrl.toString();
+
+      try {
+        Object.defineProperty(document, 'baseURI', {
+          get: function() { return cleanBaseUrl; }
+        });
+      } catch (e) {
+        console.warn("Could not set baseURI:", e);
+      }
+    }
+
+    // Set documentURI to the full original URL
+    try {
+      Object.defineProperty(document, 'documentURI', {
+        get: function() { return url; }
+      });
+    } catch (e) {
+      console.warn("Could not set documentURI:", e);
+    }
+
     (document as any).location = { href: url };
 
     // Add minimal TreeWalker implementation if needed
