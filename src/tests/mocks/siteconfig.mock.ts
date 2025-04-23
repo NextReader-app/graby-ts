@@ -1,4 +1,4 @@
-import type { SiteConfig as ExternalSiteConfig } from 'graby-ts-site-config/dist/types';
+import type { SiteConfig as ExternalSiteConfig } from 'graby-ts-site-config/dist/types.js';
 
 // Mock site configuration manager
 export class MockSiteConfigManager {

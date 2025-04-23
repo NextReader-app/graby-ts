@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, vi } from 'vitest';
-import { Graby } from '../../index';
+import { Graby } from '../../index.js';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 

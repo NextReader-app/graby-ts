@@ -30,7 +30,7 @@
     "date-fns": "^4.1.0",
     "dompurify": "^3.2.5",
     "fontoxpath": "^3.33.2",
-    "graby-ts-site-config": "^1.1.0",
+    "graby-ts-site-config": "^1.1.1",
     "html-entities": "^2.6.0",
     "isomorphic-fetch": "^3.0.0",
     "linkedom": "^0.18.9",

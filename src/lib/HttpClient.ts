@@ -1,6 +1,6 @@
 import fetch from 'isomorphic-fetch';
 import URLParse from 'url-parse';
-import { HttpClientOptions, FetchOptions, HttpResponse } from './interfaces';
+import { HttpClientOptions, FetchOptions, HttpResponse } from './interfaces.js';
 
 /**
  * HTTP client for fetching web content with proper handling of redirects

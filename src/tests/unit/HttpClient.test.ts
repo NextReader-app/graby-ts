@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, vi } from 'vitest';
-import HttpClient from '../../lib/HttpClient';
+import HttpClient from '../../lib/HttpClient.js';
 
 // Mock isomorphic-fetch module
 vi.mock('isomorphic-fetch', () => {

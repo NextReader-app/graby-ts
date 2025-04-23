@@ -4,10 +4,10 @@ import { evaluateXPathToNodes, Node as FontoxpathNode } from 'fontoxpath';
 import URLParse from 'url-parse';
 import { format, parseISO } from 'date-fns';
 import DOMPurify from 'dompurify';
-import { ContentExtractorOptions, ExtractionResult, SiteConfig } from './interfaces';
-import DomUtils from './DomUtils';
+import { ContentExtractorOptions, ExtractionResult, SiteConfig } from './interfaces.js';
+import DomUtils from './DomUtils.js';
 
-import type { SiteConfig as ExternalSiteConfig } from 'graby-ts-site-config/dist/types';
+import type { SiteConfig as ExternalSiteConfig } from 'graby-ts-site-config/dist/types.js';
 
 // Type definition for SiteConfigManager
 interface SiteConfigManager {

@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, vi } from 'vitest';
-import ContentExtractor from '../../lib/ContentExtractor';
-import { MockSiteConfigManager } from '../mocks/siteconfig.mock';
+import ContentExtractor from '../../lib/ContentExtractor.js';
+import { MockSiteConfigManager } from '../mocks/siteconfig.mock.js';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { parseHTML } from 'linkedom';

@@ -1,5 +1,5 @@
 import { describe, test, expect, vi } from 'vitest';
-import DomUtils from '../../lib/DomUtils';
+import DomUtils from '../../lib/DomUtils.js';
 import URLParse from 'url-parse';
 
 describe('DomUtils', () => {

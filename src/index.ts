@@ -1,8 +1,8 @@
 import { SiteConfigManager } from 'graby-ts-site-config';
-import HttpClient from './lib/HttpClient';
-import ContentExtractor from './lib/ContentExtractor';
-import DomUtils from './lib/DomUtils';
-import { GrabyOptions, ExtractionResult } from './lib/interfaces';
+import HttpClient from './lib/HttpClient.js';
+import ContentExtractor from './lib/ContentExtractor.js';
+import DomUtils from './lib/DomUtils.js';
+import { GrabyOptions, ExtractionResult } from './lib/interfaces.js';
 import URLParse from 'url-parse';
 
 /**
@@ -389,4 +389,4 @@ export type {
   ContentExtractorOptions,
   HttpResponse,
   SiteConfig
-} from './lib/interfaces';
+} from './lib/interfaces.js';
