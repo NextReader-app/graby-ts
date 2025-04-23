@@ -1,6 +1,6 @@
 {
   "name": "graby-ts",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "TypeScript version of Graby content extraction library",
   "main": "dist/index.node.js",
   "types": "dist/index.node.d.ts",
