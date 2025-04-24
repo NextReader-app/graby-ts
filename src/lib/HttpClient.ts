@@ -2,9 +2,6 @@ import { HttpClientOptions, FetchOptions, HttpResponse } from './interfaces.js';
 import URLParse from 'url-parse';
 import { IHttpAdapter } from './HttpAdapterInterface.js';
 
-// Import getHttpAdapter from the appropriate entry point (will be resolved at runtime)
-declare function getHttpAdapter(): IHttpAdapter;
-
 /**
  * HTTP client for fetching web content
  */
@@ -26,8 +23,12 @@ class HttpClient {
       ...options
     };
 
-    // Use custom adapter if provided (for testing) or get default adapter
-    this.httpAdapter = customAdapter || getHttpAdapter();
+    // Use custom adapter if provided (for testing) or throw error if no adapter
+    if (customAdapter) {
+      this.httpAdapter = customAdapter;
+    } else {
+      throw new Error('HTTP adapter must be provided. Initialize the library with the appropriate platform module.');
+    }
   }
 
   /**

@@ -4,7 +4,9 @@ A JavaScript implementation of [Graby](https://github.com/j0k3r/graby), the cont
 
 ## Overview
 
-Graby-TS extracts content from web pages using site-specific configurations from [FiveFilters ftr-site-config](https://github.com/fivefilters/ftr-site-config) and the Mozilla Readability algorithm. This library is designed to be platform-agnostic, working in browsers, Node.js, and NativeScript environments.
+Graby-TS extracts content from web pages using site-specific configurations
+from [FiveFilters ftr-site-config](https://github.com/fivefilters/ftr-site-config) and the Mozilla Readability algorithm.
+This library is designed to be platform-agnostic, working in Node.js, and NativeScript environments (.
 
 ## Installation
 
@@ -14,11 +16,12 @@ npm install graby-ts
 
 ## Usage
 
+### Node.js
 ```javascript
-import { Graby } from 'graby-ts/node'; // or 'graby-ts/nativescript'
+import { NodeGraby } from 'graby-ts/node';
 
-// Create a Graby instance
-const graby = new Graby();
+// Create a Graby instance for Node.js
+const graby = new NodeGraby();
 
 // Extract content from a URL
 const result = await graby.extract('https://example.com/article');
@@ -28,6 +31,21 @@ console.log(result.html);        // Article HTML content
 console.log(result.authors);     // Article authors
 console.log(result.date);        // Publication date
 console.log(result.image);       // Featured image URL
+```
+
+### NativeScript
+```javascript
+import { NativeScriptGraby } from 'graby-ts/nativescript';
+
+// Create a Graby instance for NativeScript
+const graby = new NativeScriptGraby();
+
+// Extract content from a URL
+const result = await graby.extract('https://example.com/article');
+
+console.log(result.title);       // Article title
+console.log(result.html);        // Article HTML content
+// ... and other properties
 ```
 
 ## Features Comparison with PHP Graby
@@ -53,8 +71,9 @@ console.log(result.image);       // Featured image URL
 
 ## Platform Support
 - ✅ Node.js
-- ✅ Browsers (with bundling)
-- 🚧 NativeScript (in progress)
+- ✅ NativeScript
+- 🔍 Browsers (probably)
+- 🔍 React Native (probably)
 
 ## Credits
 - Based on [Graby](https://github.com/j0k3r/graby) by j0k3r
