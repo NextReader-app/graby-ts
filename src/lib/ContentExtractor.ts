@@ -238,8 +238,11 @@ class ContentExtractor {
     }
 
     // Extract title if not already set
-    if (!this.title && document.title) {
-      this.title = document.title;
+    if (!this.title) {
+      const titleElement = document.querySelector('title');
+      if (titleElement && titleElement.textContent) {
+        this.title = titleElement.textContent.trim();
+      }
     }
   }
 
