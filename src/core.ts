@@ -2,6 +2,7 @@ import { SiteConfigManager } from 'graby-ts-site-config';
 import HttpClient from './lib/HttpClient.js';
 import ContentExtractor from './lib/ContentExtractor.js';
 import DomUtils from './lib/DomUtils.js';
+import { EncodingUtils } from './lib/EncodingUtils.js';
 import { GrabyOptions, ExtractionResult } from './lib/interfaces.js';
 import URLParse from 'url-parse';
 
@@ -24,7 +25,9 @@ class Graby {
       httpClient: {
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         referer: 'https://www.google.com/',
-        maxRedirects: 10
+        maxRedirects: 10,
+        autoDetectEncoding: true, // Enable auto-detection of encoding
+        forceEncoding: null       // Don't force a specific encoding
       },
       extractor: {
         enableXss: true
@@ -42,12 +45,12 @@ class Graby {
       ...this.options.httpClient,
       silent: this.options.silent
     };
-    
+
     // Use factory function if provided (for testing), otherwise create a new instance
-    this.httpClient = this.options.httpClientFactory 
+    this.httpClient = this.options.httpClientFactory
       ? this.options.httpClientFactory(httpClientOptions)
       : new HttpClient(httpClientOptions);
-      
+
     this.siteConfigManager = new SiteConfigManager();
     this.extractor = new ContentExtractor(this.options.extractor, this.siteConfigManager);
   }
@@ -88,6 +91,7 @@ class Graby {
           originalUrl: url,
           finalUrl: response.url,
           status: response.status,
+          detectedEncoding: response.detectedEncoding
         };
         return result;
       }
@@ -117,6 +121,7 @@ class Graby {
               // Use the single page content
               response.html = singlePageResponse.html;
               response.url = singlePageResponse.url;
+              response.detectedEncoding = singlePageResponse.detectedEncoding;
 
               // Check if we need to update the site config for the single page URL
               const singlePageHostname = new URLParse(singlePageResponse.url).hostname;
@@ -150,6 +155,7 @@ class Graby {
       result.originalUrl = url;
       result.finalUrl = response.url;
       result.status = response.status;
+      result.detectedEncoding = response.detectedEncoding;
 
       return result;
     } catch (error) {
@@ -162,17 +168,35 @@ class Graby {
 
   /**
    * Extract content from pre-fetched HTML
-   * @param html - HTML content
+   * @param html - HTML content as string or binary data
    * @param url - URL associated with the HTML
+   * @param encoding - Optional encoding of the HTML content
    * @returns - Extraction result
    */
-  async extractFromHtml(html: string, url: string): Promise<ExtractionResult> {
+  async extractFromHtml(html: string | Uint8Array, url: string, encoding?: string): Promise<ExtractionResult> {
     try {
+      // If html is provided as binary data, convert it to string with proper encoding
+      let htmlString: string;
+      let detectedEncoding: string = encoding || 'utf-8';
+
+      if (html instanceof Uint8Array) {
+        // If encoding is not provided, try to detect it
+        if (!encoding && this.options.httpClient.autoDetectEncoding) {
+          detectedEncoding = EncodingUtils.detectEncodingFromHtml(html);
+        }
+
+        // Convert to UTF-8 string
+        htmlString = EncodingUtils.convertToUtf8(html, detectedEncoding);
+      } else {
+        // If it's already a string, assume it's in the specified encoding or UTF-8
+        htmlString = html;
+      }
+
       // Get site config for this URL
       const siteConfig = await this.siteConfigManager.getConfigForHost(new URLParse(url).hostname);
 
       // Process HTML
-      await this.extractor.process(html, url, siteConfig);
+      await this.extractor.process(htmlString, url, siteConfig);
 
       // Get result
       let result = this.extractor.getResult();
@@ -188,6 +212,7 @@ class Graby {
       // Add URL info
       result.originalUrl = url;
       result.finalUrl = url;
+      result.detectedEncoding = detectedEncoding;
 
       return result;
     } catch (error) {
@@ -387,7 +412,7 @@ class Graby {
   }
 }
 
-export { Graby, ContentExtractor, DomUtils };
+export { Graby, ContentExtractor, DomUtils, EncodingUtils };
 export type {
   ExtractionResult,
   GrabyOptions,

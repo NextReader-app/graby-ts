@@ -1,8 +1,11 @@
 import { NativeScriptAdapter } from './lib/NativeScriptAdapter.js';
+import { Buffer } from 'buffer';
 import { IHttpAdapter } from './lib/HttpAdapterInterface.js';
 import HttpClient from './lib/HttpClient.js';
 import { Graby } from './core.js';
 import { HttpClientOptions, GrabyOptions } from './lib/interfaces.js';
+
+global.Buffer = Buffer;
 
 // Create a platform-specific adapter factory
 export function createAdapter(): IHttpAdapter {

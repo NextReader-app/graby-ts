@@ -15,6 +15,7 @@ describe('HttpClient', () => {
 
   test('fetches content with default headers', async () => {
     // Mock adapter response
+    const htmlContent = '<html><body>Test content</body></html>';
     const mockResponse = {
       url: 'https://example.com',
       status: 200,
@@ -22,7 +23,8 @@ describe('HttpClient', () => {
         'content-type': 'text/html; charset=utf-8'
       },
       redirected: false,
-      text: vi.fn().mockResolvedValue('<html><body>Test content</body></html>')
+      text: vi.fn().mockResolvedValue(htmlContent),
+      bytes: vi.fn().mockResolvedValue(Buffer.from(htmlContent))
     };
 
     (mockAdapter.request as any).mockResolvedValue(mockResponse);
@@ -50,6 +52,7 @@ describe('HttpClient', () => {
 
   test('handles redirects', async () => {
     // Mock adapter response for redirect
+    const htmlContent = '<html><body>Redirected content</body></html>';
     const mockResponse = {
       url: 'https://example.com/redirected',
       status: 200,
@@ -57,7 +60,8 @@ describe('HttpClient', () => {
         'content-type': 'text/html; charset=utf-8'
       },
       redirected: true,
-      text: vi.fn().mockResolvedValue('<html><body>Redirected content</body></html>')
+      text: vi.fn().mockResolvedValue(htmlContent),
+      bytes: vi.fn().mockResolvedValue(Buffer.from(htmlContent))
     };
 
     (mockAdapter.request as any).mockResolvedValue(mockResponse);
@@ -72,6 +76,7 @@ describe('HttpClient', () => {
 
   test('handles non-HTML content types', async () => {
     // Mock adapter response for non-HTML content
+    const binaryContent = 'binary data';
     const mockResponse = {
       url: 'https://example.com/image.jpg',
       status: 200,
@@ -79,7 +84,8 @@ describe('HttpClient', () => {
         'content-type': 'image/jpeg'
       },
       redirected: false,
-      text: vi.fn().mockResolvedValue('binary data')
+      text: vi.fn().mockResolvedValue(binaryContent),
+      bytes: vi.fn().mockResolvedValue(Buffer.from(binaryContent))
     };
 
     (mockAdapter.request as any).mockResolvedValue(mockResponse);
@@ -142,6 +148,7 @@ describe('HttpClient', () => {
 
   test('customizes headers via options', async () => {
     // Mock adapter response
+    const htmlContent = '<html><body>Test content</body></html>';
     const mockResponse = {
       url: 'https://example.com',
       status: 200,
@@ -149,7 +156,8 @@ describe('HttpClient', () => {
         'content-type': 'text/html; charset=utf-8'
       },
       redirected: false,
-      text: vi.fn().mockResolvedValue('<html><body>Test content</body></html>')
+      text: vi.fn().mockResolvedValue(htmlContent),
+      bytes: vi.fn().mockResolvedValue(Buffer.from(htmlContent))
     };
 
     (mockAdapter.request as any).mockResolvedValue(mockResponse);
@@ -188,6 +196,7 @@ describe('HttpClient', () => {
 
   test('handles redirects with silent option', async () => {
     // Mock adapter response with redirect
+    const htmlContent = '<html><body>Redirected content</body></html>';
     const mockResponse = {
       url: 'https://example.com/redirected',
       status: 200,
@@ -195,7 +204,8 @@ describe('HttpClient', () => {
         'content-type': 'text/html; charset=utf-8'
       },
       redirected: true,
-      text: vi.fn().mockResolvedValue('<html><body>Redirected content</body></html>')
+      text: vi.fn().mockResolvedValue(htmlContent),
+      bytes: vi.fn().mockResolvedValue(Buffer.from(htmlContent))
     };
 
     (mockAdapter.request as any).mockResolvedValue(mockResponse);
@@ -223,6 +233,7 @@ describe('HttpClient', () => {
 
   test('handles site-specific HTTP headers', async () => {
     // Mock adapter response
+    const htmlContent = '<html><body>Test content</body></html>';
     const mockResponse = {
       url: 'https://example.com',
       status: 200,
@@ -230,7 +241,8 @@ describe('HttpClient', () => {
         'content-type': 'text/html; charset=utf-8'
       },
       redirected: false,
-      text: vi.fn().mockResolvedValue('<html><body>Test content</body></html>')
+      text: vi.fn().mockResolvedValue(htmlContent),
+      bytes: vi.fn().mockResolvedValue(Buffer.from(htmlContent))
     };
 
     (mockAdapter.request as any).mockResolvedValue(mockResponse);

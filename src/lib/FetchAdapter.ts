@@ -20,12 +20,20 @@ export class FetchAdapter implements IHttpAdapter {
 
       clearTimeout(timeoutId);
 
+      // Create a cloned response to avoid consuming body twice
+      const clonedResponse = response.clone();
+
       return {
         url: response.url,
         status: response.status,
         headers: this.extractHeaders(response.headers),
         redirected: response.redirected,
-        text: () => response.text()
+        text: async () => await response.text(),
+        bytes: async () => {
+          // Get response as arrayBuffer and return as Uint8Array
+          const arrayBuffer = await clonedResponse.arrayBuffer();
+          return new Uint8Array(arrayBuffer);
+        }
       };
     } catch (error) {
       clearTimeout(timeoutId);

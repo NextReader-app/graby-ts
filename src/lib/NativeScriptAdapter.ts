@@ -14,6 +14,7 @@ export class NativeScriptAdapter implements IHttpAdapter {
       timeout
     };
 
+    // NativeScript Http returns both text and binary content
     const response = await Http.request(nsOptions);
 
     return {
@@ -21,7 +22,24 @@ export class NativeScriptAdapter implements IHttpAdapter {
       status: response.statusCode,
       headers: this.extractHeaders(response.headers),
       redirected: false,
-      text: async () => response.content?.toString() || ''
+      text: async () => {
+        // Return text content
+        if (response.content) {
+          return response.content.toString();
+        }
+        return '';
+      },
+      bytes: async () => {
+        // Convert content to Uint8Array
+        if (response.content) {
+          // HttpContent allways has a toArrayBuffer() method
+          const arrayBuffer = response.content.toArrayBuffer();
+          return new Uint8Array(arrayBuffer);
+        }
+
+        // Fallback to empty Uint8Array
+        return new Uint8Array(0);
+      }
     };
   }
   

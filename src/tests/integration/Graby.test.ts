@@ -23,6 +23,7 @@ describe('Graby', () => {
 
   test('extracts content from a URL', async () => {
     // Setup mock response
+    const articleHtml = loadFixture('article.html');
     const mockResponse = {
       url: 'https://example.com/article',
       status: 200,
@@ -30,7 +31,8 @@ describe('Graby', () => {
         'content-type': 'text/html; charset=utf-8'
       },
       redirected: false,
-      text: vi.fn().mockResolvedValue(loadFixture('article.html'))
+      text: vi.fn().mockResolvedValue(articleHtml),
+      bytes: vi.fn().mockResolvedValue(Buffer.from(articleHtml))
     };
 
     (mockAdapter.request as any).mockResolvedValue(mockResponse);
@@ -90,6 +92,7 @@ describe('Graby', () => {
 
   test('handles non-HTML content types', async () => {
     // Mock response to return a non-HTML content type
+    const binaryData = 'binary data';
     const mockResponse = {
       url: 'https://example.com/image.jpg',
       status: 200,
@@ -97,7 +100,8 @@ describe('Graby', () => {
         'content-type': 'image/jpeg'
       },
       redirected: false,
-      text: vi.fn().mockResolvedValue('binary data')
+      text: vi.fn().mockResolvedValue(binaryData),
+      bytes: vi.fn().mockResolvedValue(Buffer.from(binaryData))
     };
 
     (mockAdapter.request as any).mockResolvedValue(mockResponse);
@@ -120,6 +124,7 @@ describe('Graby', () => {
 
   test('customizes behavior through options', async () => {
     // Setup mock response
+    const articleHtml = loadFixture('article.html');
     const mockResponse = {
       url: 'https://example.com/article',
       status: 200,
@@ -127,7 +132,8 @@ describe('Graby', () => {
         'content-type': 'text/html; charset=utf-8'
       },
       redirected: false,
-      text: vi.fn().mockResolvedValue(loadFixture('article.html'))
+      text: vi.fn().mockResolvedValue(articleHtml),
+      bytes: vi.fn().mockResolvedValue(Buffer.from(articleHtml))
     };
 
     (mockAdapter.request as any).mockResolvedValue(mockResponse);
@@ -215,6 +221,7 @@ describe('Graby', () => {
 
   test('passes custom headers to http adapter', async () => {
     // Setup mock response
+    const articleHtml = loadFixture('article.html');
     const mockResponse = {
       url: 'https://example.com/article',
       status: 200,
@@ -222,7 +229,8 @@ describe('Graby', () => {
         'content-type': 'text/html; charset=utf-8'
       },
       redirected: false,
-      text: vi.fn().mockResolvedValue(loadFixture('article.html'))
+      text: vi.fn().mockResolvedValue(articleHtml),
+      bytes: vi.fn().mockResolvedValue(Buffer.from(articleHtml))
     };
 
     (mockAdapter.request as any).mockResolvedValue(mockResponse);

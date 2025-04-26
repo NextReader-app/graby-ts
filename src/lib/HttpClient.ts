@@ -1,6 +1,7 @@
 import { HttpClientOptions, FetchOptions, HttpResponse } from './interfaces.js';
 import URLParse from 'url-parse';
 import { IHttpAdapter } from './HttpAdapterInterface.js';
+import { EncodingUtils } from './EncodingUtils.js';
 
 /**
  * HTTP client for fetching web content
@@ -20,6 +21,8 @@ class HttpClient {
       referer: 'https://www.google.com/',
       maxRedirects: 10,
       silent: false,
+      autoDetectEncoding: true,
+      forceEncoding: null,
       ...options
     };
 
@@ -35,7 +38,7 @@ class HttpClient {
    * Fetch content from a URL
    */
   async fetch(url: string, options: FetchOptions = {}): Promise<HttpResponse> {
-    const { skipTypeCheck = false, headers = {} } = options;
+    const { skipTypeCheck = false, headers = {}, rawResponse = false } = options;
     const parsedUrl = new URLParse(url);
 
     // Setup headers
@@ -71,8 +74,32 @@ class HttpClient {
         return this.handleSpecialContentType(response, contentType);
       }
 
-      // Get HTML content
-      const html = await response.text();
+      // Get raw binary data for encoding detection
+      const rawBytes = await response.bytes();
+
+      // Detect encoding from headers and content
+      let detectedEncoding: string;
+
+      if (this.options.forceEncoding) {
+        // Use forced encoding if specified
+        detectedEncoding = this.options.forceEncoding;
+      } else if (this.options.autoDetectEncoding) {
+        // Try to detect from HTTP headers first
+        const encodingFromHeaders = EncodingUtils.detectEncodingFromHeaders(response.headers);
+
+        // If not found in headers, try to detect from content
+        if (!encodingFromHeaders) {
+          detectedEncoding = EncodingUtils.detectEncodingFromHtml(rawBytes);
+        } else {
+          detectedEncoding = encodingFromHeaders;
+        }
+      } else {
+        // Default to UTF-8 if auto-detection is disabled
+        detectedEncoding = 'utf-8';
+      }
+
+      // Convert content to UTF-8
+      const html = rawResponse ? null : EncodingUtils.convertToUtf8(rawBytes, detectedEncoding);
 
       // Process response URL
       let responseUrl = response.url;
@@ -85,7 +112,9 @@ class HttpClient {
         html,
         contentType,
         status: response.status,
-        headers: response.headers
+        headers: response.headers,
+        rawBytes: rawResponse ? rawBytes : undefined,
+        detectedEncoding
       };
     } catch (error) {
       if (!this.options.silent) {
@@ -104,13 +133,17 @@ class HttpClient {
       responseUrl = responseUrl.slice(0, -1);
     }
 
+    // Get raw binary data
+    const rawBytes = await response.bytes();
+
     return {
       url: responseUrl,
       html: null,
       contentType,
       status: response.status,
       headers: response.headers,
-      specialContent: true
+      specialContent: true,
+      rawBytes
     };
   }
 

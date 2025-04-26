@@ -8,6 +8,7 @@ export interface AdapterResponse {
   status: number;
   headers: Record<string, string>;
   text(): Promise<string>;
+  bytes(): Promise<Uint8Array>;
   redirected?: boolean;
 }
 

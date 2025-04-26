@@ -10,6 +10,8 @@ export interface HttpResponse {
   status: number;
   headers: Record<string, string>;
   specialContent?: boolean;
+  rawBytes?: Uint8Array;
+  detectedEncoding?: string; // Detected encoding from the content
 }
 
 /**
@@ -20,6 +22,8 @@ export interface HttpClientOptions {
   referer?: string;
   maxRedirects?: number;
   silent?: boolean;
+  autoDetectEncoding?: boolean; // Whether to auto-detect encoding (default: true)
+  forceEncoding?: string | null; // Force specific encoding (default: null)
 }
 
 /**
@@ -28,6 +32,7 @@ export interface HttpClientOptions {
 export interface FetchOptions {
   skipTypeCheck?: boolean;
   headers?: Record<string, string>;
+  rawResponse?: boolean; // Return raw bytes instead of converted text
 }
 
 /**
@@ -53,6 +58,7 @@ export interface ExtractionResult {
   originalUrl?: string;
   finalUrl?: string;
   status?: number;
+  detectedEncoding?: string; // Detected content encoding
 }
 
 /**
