@@ -58,7 +58,7 @@
     "vitest": "^3.2.7"
   },
   "peerDependencies": {
-    "@nativescript/core": "^8.0.0",
+    "@nativescript/core": "^8.0.0 || ^9.0.0",
     "isomorphic-fetch": "^3.0.0"
   },
   "optionalDependencies": {
