@@ -2,29 +2,26 @@ name: Publish to NPM
 
 on:
   push:
+    branches:
+      - master
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
 
 permissions:
   contents: read
-  id-token: write  # required for npm trusted publishing (OIDC)
+  id-token: write # npm trusted publishing (OIDC)
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: ./.github/actions/setup
+      - run: npm run build
+      - run: npm test
+
+      # Publishes only if package.json is a semver upgrade of what npm has
+      - uses: JS-DevTools/npm-publish@0fd2f4369c5d6bcfcde6091a7c527d810b9b5c3f # v4.1.5
         with:
-          node-version: '24'
-          registry-url: 'https://registry.npmjs.org'
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build project
-        run: npm run build
-
-      - name: Publish to NPM
-        run: npm publish
+          strategy: upgrade
