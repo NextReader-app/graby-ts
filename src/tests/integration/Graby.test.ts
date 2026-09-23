@@ -53,6 +53,10 @@ describe('Graby', () => {
     expect(result.html).toContain('This is the first paragraph of the article.');
     expect(result.authors).toContain('By John Smith');
     expect(result.success).toBe(true);
+    // The page the content came from is handed back so it can be stored and
+    // extracted from again later
+    expect(result.effectiveResponse?.url).toBe('https://example.com/article');
+    expect(result.effectiveResponse?.html).toBe(articleHtml);
   });
 
   test('extracts content from pre-fetched HTML', async () => {
@@ -73,6 +77,8 @@ describe('Graby', () => {
     expect(result.originalUrl).toBe(url);
     expect(result.finalUrl).toBe(url);
     expect(result.success).toBe(true);
+    expect(result.effectiveResponse?.html).toBe(html);
+    expect(result.effectiveResponse?.status).toBe(200);
   });
 
   test('handles fetch errors gracefully', async () => {

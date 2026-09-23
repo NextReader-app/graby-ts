@@ -91,7 +91,8 @@ class Graby {
           originalUrl: url,
           finalUrl: response.url,
           status: response.status,
-          detectedEncoding: response.detectedEncoding
+          detectedEncoding: response.detectedEncoding,
+          effectiveResponse: response
         };
         return result;
       }
@@ -151,11 +152,13 @@ class Graby {
         }
       }
 
-      // Add response info
+      // Add response info. `response` has been updated in place if a single
+      // page view was fetched, so it is the page the content came from
       result.originalUrl = url;
       result.finalUrl = response.url;
       result.status = response.status;
       result.detectedEncoding = response.detectedEncoding;
+      result.effectiveResponse = response;
 
       return result;
     } catch (error) {
@@ -213,6 +216,15 @@ class Graby {
       result.originalUrl = url;
       result.finalUrl = url;
       result.detectedEncoding = detectedEncoding;
+      // Nothing was fetched, so report the given content as if it had been
+      result.effectiveResponse = {
+        url,
+        html: htmlString,
+        contentType: 'text/html',
+        status: 200,
+        headers: {},
+        detectedEncoding
+      };
 
       return result;
     } catch (error) {

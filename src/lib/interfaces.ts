@@ -59,6 +59,13 @@ export interface ExtractionResult {
   finalUrl?: string;
   status?: number;
   detectedEncoding?: string; // Detected content encoding
+  /**
+   * The response the content came from, so it can be stored and run through
+   * extractFromHtml() again later: `url` is the effective URL, `html` the page
+   * decoded to UTF-8. With a single page view this is that page; with a multi
+   * page article, the first page only.
+   */
+  effectiveResponse?: HttpResponse;
 }
 
 /**

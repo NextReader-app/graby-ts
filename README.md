@@ -83,6 +83,7 @@ This is required because `chardet` and `iconv-lite` has extended functionality, 
 | `finalUrl` | `string` | The final URL after following any redirects |
 | `status` | `number` | HTTP status code of the response |
 | `detectedEncoding` | `string` | The original character encoding of the content (before conversion to UTF-8) |
+| `effectiveResponse` | `HttpResponse` | The response the content came from, so it can be stored and run through `extractFromHtml()` again later. `effectiveResponse.url` is the effective URL and `effectiveResponse.html` the page decoded to UTF-8. With a single page view it is that page; with a multi page article it is the first page only. Content passed to `extractFromHtml()` is reported as a synthetic 200. |
 
 ### Configuration Options
 
