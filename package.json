@@ -63,5 +63,13 @@
   },
   "optionalDependencies": {
     "isomorphic-fetch": "^3.0.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NextReader-app/graby-ts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/NextReader-app/graby-ts/issues"
+  },
+  "homepage": "https://github.com/NextReader-app/graby-ts#readme"
 }
