@@ -1,5 +1,9 @@
 import URLParse from 'url-parse';
 
+// The marking a link standing in for an embed travels under, from linkEmbeds
+// to frameEmbeds
+export const EMBED_CLASS = 'graby-embed';
+
 /**
  * Utility functions for DOM manipulation
  */
@@ -130,6 +134,97 @@ class DomUtils {
       }
     });
   }
+  /**
+   * Carry an embed placeholder through extraction as a link.
+   *
+   * A placeholder is an empty element holding the address of the embed in
+   * `data-src`, which the script of the site turns into an iframe once the page
+   * runs - habr builds the videos of an article this way. Nothing runs that
+   * script here, so the element would reach the reader as an empty box.
+   *
+   * A link is the one shape that survives the way in: an empty element is junk
+   * to Readability, and a frame it keeps only when the address looks like a
+   * video to it. frameEmbeds writes the frame out afterwards.
+   * @param element - Element containing placeholders
+   */
+  static linkEmbeds(element: Element): void {
+    if (!element) return;
+
+    const placeholders = element.querySelectorAll('[data-src]');
+
+    placeholders.forEach(node => {
+      // A media element carries its own address and is left to fixLazyImages
+      if (!this.embedContainers.has(node.tagName)) {
+        return;
+      }
+
+      const src = node.getAttribute('data-src');
+
+      // `data-src` serves a hundred other purposes. A relative address is kept:
+      // makeUrlsAbsolute reaches it later, as it does every other one
+      if (!src || (!/^(https?:)?\/\//i.test(src) && !src.startsWith('/'))) {
+        return;
+      }
+
+      // Anything holding content of its own is not a placeholder
+      if (node.children.length || (node.textContent || '').trim()) {
+        return;
+      }
+
+      const document = node.ownerDocument;
+      const parent = node.parentNode;
+
+      if (!document || !parent) {
+        return;
+      }
+
+      const link = document.createElement('a');
+
+      link.setAttribute('class', EMBED_CLASS);
+      link.setAttribute('href', src);
+      // Readability keeps no empty link
+      link.textContent = new URLParse(src).hostname || src;
+
+      parent.replaceChild(link, node);
+    });
+  }
+
+  /**
+   * Write out the frame each embed link stands for - what the script of the
+   * site would have built, had anything run it.
+   * @param element - Extracted content, with its addresses already absolute
+   */
+  static frameEmbeds(element: Element): void {
+    if (!element) return;
+
+    element.querySelectorAll(`a.${EMBED_CLASS}`).forEach(link => {
+      const src = link.getAttribute('href');
+
+      // The marking is a class, and the page being extracted could carry one of
+      // its own: nothing but an address on the web goes into a frame
+      if (!src || !/^https?:\/\//i.test(src)) {
+        return;
+      }
+
+      const document = link.ownerDocument;
+      const parent = link.parentNode;
+
+      if (!document || !parent) {
+        return;
+      }
+
+      const frame = document.createElement('iframe');
+
+      frame.setAttribute('src', src);
+      frame.setAttribute('allowfullscreen', '');
+
+      parent.replaceChild(frame, link);
+    });
+  }
+
+  // What may stand in for an embed. A placeholder is a container the script of
+  // the site fills, never an element that would carry the embed itself
+  private static embedContainers = new Set(['DIV', 'SPAN', 'P', 'FIGURE', 'SECTION']);
 }
 
 export default DomUtils;

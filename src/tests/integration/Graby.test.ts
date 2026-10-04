@@ -178,6 +178,33 @@ describe('Graby', () => {
     );
   });
 
+  test('writes out the frame an embed placeholder stands for', async () => {
+    const articleHtml = loadFixture('article-with-embed.html');
+    const mockResponse = {
+      url: 'https://example.com/article',
+      status: 200,
+      headers: { 'content-type': 'text/html; charset=utf-8' },
+      redirected: false,
+      text: vi.fn().mockResolvedValue(articleHtml),
+      bytes: vi.fn().mockResolvedValue(Buffer.from(articleHtml))
+    };
+
+    (mockAdapter.request as any).mockResolvedValue(mockResponse);
+
+    const graby = new Graby({
+      silent: true,
+      httpClientFactory: () => new HttpClient({ silent: true }, mockAdapter)
+    });
+
+    const result = await graby.extract('https://example.com/article');
+
+    expect(result.html).toMatch(/<iframe[^>]*src="https:\/\/embed\.example\.com\/iframe\/abc123"/);
+    expect(result.html).not.toContain('data-src');
+    // The page of the article and nothing else: the frame is the reader's to
+    // fetch, when and if the content is shown
+    expect(mockAdapter.request).toHaveBeenCalledTimes(1);
+  });
+
   test('properly handles silent option for error logging', async () => {
     // Mock a network error
     const networkError = new Error('Network error');

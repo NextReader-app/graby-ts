@@ -4,7 +4,7 @@ import URLParse from 'url-parse';
 import { format, parseISO } from 'date-fns';
 import createDOMPurify from 'dompurify';
 import { ContentExtractorOptions, ExtractionResult, SiteConfig } from './interfaces.js';
-import DomUtils from './DomUtils.js';
+import DomUtils, { EMBED_CLASS } from './DomUtils.js';
 import XPathHelper from './XPathHelper.js';
 
 import type { SiteConfig as ExternalSiteConfig } from 'graby-ts-site-config/dist/types.js';
@@ -100,6 +100,11 @@ class ContentExtractor {
 
     // Extract metadata (OpenGraph, JSON-LD, etc.)
     this.extractMetadata(document);
+
+    // An empty element holding an address stands for an embed the script of the
+    // site never arrived to build. It travels through extraction as a link and
+    // becomes a frame in postProcess - DomUtils.linkEmbeds says why
+    DomUtils.linkEmbeds(document.body);
 
     // Extract links to single page and next page
     if (siteConfig) {
@@ -293,7 +298,9 @@ class ContentExtractor {
       // Create Readability instance
       const reader = new Readability(document as any, {
         // Optional Readability options
-        charThreshold: 500
+        charThreshold: 500,
+        // Every other class is stripped, and this one has to reach postProcess
+        classesToPreserve: [EMBED_CLASS]
       });
 
       // Parse article
@@ -660,6 +667,9 @@ class ContentExtractor {
 
       // Handle lazy-loaded images
       DomUtils.fixLazyImages(this.content);
+
+      // The other half of linkEmbeds, now that the addresses are absolute
+      DomUtils.frameEmbeds(this.content);
 
       // Apply XSS protection
       if (this.options.enableXss) {

@@ -123,4 +123,88 @@ describe('DomUtils', () => {
     expect(frames[0].getAttribute('src')).toBe('https://example.com/embed/1');
     expect(frames[1].getAttribute('src')).toBe('https://player.example.com/2');
   });
+
+  test('makeUrlsAbsolute resolves the address of a frame', () => {
+    const content = contentOf('<iframe src="/embed/1"></iframe><iframe src="https://player.example.com/2"></iframe>');
+
+    DomUtils.makeUrlsAbsolute(content, 'https://example.com/article');
+
+    const frames = content.querySelectorAll('iframe');
+    expect(frames[0].getAttribute('src')).toBe('https://example.com/embed/1');
+    expect(frames[1].getAttribute('src')).toBe('https://player.example.com/2');
+  });
+
+  test('linkEmbeds carries a placeholder through as a link', () => {
+    const content = contentOf(
+      '<p>Before</p><div class="embed_temp" data-src="https://embedd.srv.habr.com/iframe/abc"></div><p>After</p>'
+    );
+
+    DomUtils.linkEmbeds(content);
+
+    const link = content.querySelector('a.graby-embed');
+    expect(link).not.toBeNull();
+    expect(link!.getAttribute('href')).toBe('https://embedd.srv.habr.com/iframe/abc');
+    // Words, so that Readability keeps it
+    expect(link!.textContent).toBe('embedd.srv.habr.com');
+    expect(content.querySelectorAll('div').length).toBe(0);
+  });
+
+  test('frameEmbeds turns the link back into the frame it stands for', () => {
+    const content = contentOf(
+      '<p>Before</p><a class="graby-embed" href="https://embedd.srv.habr.com/iframe/abc">habr.com</a><p>After</p>'
+    );
+
+    DomUtils.frameEmbeds(content);
+
+    const frame = content.querySelector('iframe');
+    expect(frame).not.toBeNull();
+    expect(frame!.getAttribute('src')).toBe('https://embedd.srv.habr.com/iframe/abc');
+    expect(frame!.hasAttribute('allowfullscreen')).toBe(true);
+    expect(content.querySelectorAll('a').length).toBe(0);
+    expect(content.querySelectorAll('p').length).toBe(2);
+  });
+
+  test('frameEmbeds leaves a link of the article alone', () => {
+    const content = contentOf('<p>A <a href="https://example.com/page">link</a> in the text</p>');
+
+    DomUtils.frameEmbeds(content);
+
+    expect(content.querySelectorAll('iframe').length).toBe(0);
+    expect(content.querySelectorAll('a').length).toBe(1);
+  });
+
+  test('linkEmbeds leaves alone what is not a placeholder', () => {
+    const content = contentOf([
+      // Holds content of its own
+      '<div data-src="https://embed.example.com/1"><p>Text</p></div>',
+      // Nowhere to go
+      '<div data-src="not a url"></div>',
+      '<div data-src=""></div>',
+      // Carries the embed itself
+      '<iframe data-src="https://embed.example.com/2"></iframe>',
+      // Nothing to do with embedding
+      '<p>A paragraph</p>'
+    ].join(''));
+
+    DomUtils.linkEmbeds(content);
+
+    expect(content.querySelectorAll('a').length).toBe(0);
+    expect(content.querySelectorAll('div').length).toBe(3);
+  });
+
+  test('frameEmbeds builds a frame for an address on the web and nothing else', () => {
+    // The marking is a class, and a page being extracted can carry one
+    const content = contentOf([
+      '<a class="graby-embed" href="javascript:alert(1)">x</a>',
+      '<a class="graby-embed" href="/local/page">y</a>',
+      '<a class="graby-embed" href="https://embed.example.com/1">z</a>'
+    ].join(''));
+
+    DomUtils.frameEmbeds(content);
+
+    const frames = content.querySelectorAll('iframe');
+    expect(frames.length).toBe(1);
+    expect(frames[0].getAttribute('src')).toBe('https://embed.example.com/1');
+    expect(content.querySelectorAll('a').length).toBe(2);
+  });
 });
