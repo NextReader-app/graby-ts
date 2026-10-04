@@ -42,6 +42,15 @@ class DomUtils {
         img.setAttribute('srcset', newSrcset);
       }
     });
+
+    // Process frames, whose address is as relative as any other
+    const frames = element.querySelectorAll('iframe');
+    frames.forEach(frame => {
+      const src = frame.getAttribute('src');
+      if (src) {
+        frame.setAttribute('src', this.resolveUrl(src, base));
+      }
+    });
   }
 
   /**

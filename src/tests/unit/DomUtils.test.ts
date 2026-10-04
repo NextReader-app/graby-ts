@@ -1,6 +1,15 @@
 import { describe, test, expect, vi } from 'vitest';
+import { parseHTML } from 'linkedom/worker';
 import DomUtils from '../../lib/DomUtils.js';
 import URLParse from 'url-parse';
+
+// A real tree, where a mock element cannot reach: replacing a node needs a
+// document to make the new one with and a parent to put it in
+const contentOf = (html: string) => {
+  const { document } = parseHTML(`<div id="content">${html}</div>`);
+
+  return document.getElementById('content')!;
+};
 
 describe('DomUtils', () => {
   test('makeUrlsAbsolute converts relative URLs to absolute', () => {
@@ -103,5 +112,15 @@ describe('DomUtils', () => {
     expect(mockImages[1].removeAttribute).toHaveBeenCalledWith('data-src');
 
     expect(mockImages[2].removeAttribute).toHaveBeenCalledWith('data-original');
+  });
+
+  test('makeUrlsAbsolute resolves the address of a frame', () => {
+    const content = contentOf('<iframe src="/embed/1"></iframe><iframe src="https://player.example.com/2"></iframe>');
+
+    DomUtils.makeUrlsAbsolute(content, 'https://example.com/article');
+
+    const frames = content.querySelectorAll('iframe');
+    expect(frames[0].getAttribute('src')).toBe('https://example.com/embed/1');
+    expect(frames[1].getAttribute('src')).toBe('https://player.example.com/2');
   });
 });
